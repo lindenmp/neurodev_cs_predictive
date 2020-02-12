@@ -17,7 +17,7 @@ import statsmodels.api as sm
 # In[2]:
 
 
-sys.path.append('/Users/lindenmp/Dropbox/Work/ResProjects/NormativeNeuroDev_CrossSec/code/func/')
+sys.path.append('/Users/lindenmp/Dropbox/Work/ResProjects/NormativeNeuroDev_CrossSec_DWI/code/func/')
 from proj_environment import set_proj_env
 from func import get_cmap
 
@@ -114,22 +114,10 @@ print('N after Diffusion exclusion:', df.shape[0])
 # In[9]:
 
 
-df['averageManualRating'].unique()
-
-
-# In[10]:
-
-
-np.sum(df['averageManualRating'] == 2)
-
-
-# In[11]:
-
-
 df['dti64QAManualScore'].unique()
 
 
-# In[12]:
+# In[10]:
 
 
 np.sum(df['dti64QAManualScore'] == 2)
@@ -137,7 +125,7 @@ np.sum(df['dti64QAManualScore'] == 2)
 
 # # Define train/test split
 
-# In[13]:
+# In[11]:
 
 
 if train_test_str == 'squeakycleanExclude':
@@ -155,7 +143,7 @@ if train_test_str == 'squeakycleanExclude':
 
 # ## Train/Test split
 
-# In[14]:
+# In[12]:
 
 
 # find unique ages
@@ -179,7 +167,7 @@ elif test_diff.size != 0:
 
 # ## Export
 
-# In[15]:
+# In[13]:
 
 
 header = [train_test_str, 'ageAtScan1', 'ageAtScan1_Years','sex','race2','handednessv2',
@@ -190,7 +178,7 @@ df.to_csv(os.path.join(os.environ['TRTEDIR'], 'df_pheno.csv'), columns = header)
 
 # # Plots
 
-# In[16]:
+# In[14]:
 
 
 if not os.path.exists(os.environ['FIGDIR']): os.makedirs(os.environ['FIGDIR'])
@@ -207,13 +195,13 @@ print(phenos)
 
 # ## Age
 
-# In[17]:
+# In[15]:
 
 
 df['sex'].unique()
 
 
-# In[18]:
+# In[16]:
 
 
 np.sum(df.loc[df[train_test_str] == 1,'sex'] == 2)
@@ -221,7 +209,7 @@ np.sum(df.loc[df[train_test_str] == 1,'sex'] == 2)
 
 # Figure 2A
 
-# In[19]:
+# In[17]:
 
 
 f, axes = plt.subplots(1,2)
@@ -259,7 +247,7 @@ f.savefig('age_distributions.svg', dpi = 300, bbox_inches = 'tight', pad_inches 
 
 # Figure 2B
 
-# In[20]:
+# In[18]:
 
 
 df_rc = pd.melt(df, id_vars = train_test_str, value_vars = phenos)
