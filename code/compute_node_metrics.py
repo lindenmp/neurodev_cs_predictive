@@ -15,7 +15,7 @@ import scipy.io as sio
 # In[2]:
 
 
-sys.path.append('/Users/lindenmp/Dropbox/Work/ResProjects/NormativeNeuroDev_CrossSec/code/func/')
+sys.path.append('/Users/lindenmp/Dropbox/Work/ResProjects/NormativeNeuroDev_CrossSec_DWI/code/func/')
 from proj_environment import set_proj_env
 from func import node_strength, ave_control, modal_control
 
@@ -69,36 +69,19 @@ if parc_str == 'schaefer' and parc_scale == 200:
 
 
 # output dataframe
-ct_labels = ['ct_' + str(i) for i in range(num_parcels)]
 str_labels = ['str_' + str(i) for i in range(num_parcels)]
 ac_labels = ['ac_' + str(i) for i in range(num_parcels)]
 mc_labels = ['mc_' + str(i) for i in range(num_parcels)]
 
-df_node = pd.DataFrame(index = df.index, columns = ct_labels + str_labels + ac_labels + mc_labels)
+df_node = pd.DataFrame(index = df.index, columns = str_labels + ac_labels + mc_labels)
 df_node.insert(0, train_test_str, df[train_test_str])
 
 print(df_node.shape)
 
 
-# ## Load in cortical thickness
-
-# In[9]:
-
-
-CT = np.zeros((df.shape[0], num_parcels))
-
-for (i, (index, row)) in enumerate(df.iterrows()):
-    full_path = glob.glob(os.path.join(os.environ['CTDIR'], str(index[0]), '*' + str(index[1]), os.environ['CT_FILE_NAME']))[0]
-    
-    ct = np.loadtxt(full_path)
-    CT[i,:] = ct
-    
-df_node.loc[:,ct_labels] = CT
-
-
 # ## Load in connectivity matrices and compute node metrics
 
-# In[10]:
+# In[9]:
 
 
 # fc stored as 3d matrix, subjects of 3rd dim
@@ -154,13 +137,13 @@ df_node.loc[:,ac_labels] = AC
 df_node.loc[:,mc_labels] = MC
 
 
-# In[11]:
+# In[10]:
 
 
 np.sum(subj_filt)
 
 
-# In[12]:
+# In[11]:
 
 
 if any(subj_filt):
@@ -171,7 +154,7 @@ if any(subj_filt):
 
 # ### Get streamline count and network density
 
-# In[13]:
+# In[12]:
 
 
 A_c = np.zeros((A.shape[2],))
@@ -186,13 +169,13 @@ df['network_density'] = A_d
 
 # ## Save out
 
-# In[14]:
+# In[13]:
 
 
 os.environ['MODELDIR']
 
 
-# In[15]:
+# In[14]:
 
 
 # Save out
