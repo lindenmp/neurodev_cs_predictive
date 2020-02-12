@@ -11,7 +11,7 @@ def set_proj_env(dataset = 'PNC', train_test_str = 'squeakycleanExclude', exclud
     primary_covariate = 'ageAtScan1_Years', extra_str = ''):
 
     # Project root directory
-    projdir = '/Users/lindenmp/Dropbox/Work/ResProjects/NormativeNeuroDev_CrossSec'; os.environ['PROJDIR'] = projdir
+    projdir = '/Users/lindenmp/Dropbox/Work/ResProjects/NormativeNeuroDev_CrossSec_DWI'; os.environ['PROJDIR'] = projdir
     
     # Derivatives for dataset --> root directory for the dataset under analysis
     derivsdir = os.path.join('/Users/lindenmp/Dropbox/Work/ResData/PNC/'); os.environ['DERIVSDIR'] = derivsdir
@@ -35,13 +35,7 @@ def set_proj_env(dataset = 'PNC', train_test_str = 'squeakycleanExclude', exclud
         drop_parcels = []
         num_parcels = parcel_names.shape[0]
 
-    # Cortical thickness directory
-    ctdir = os.path.join(derivsdir, 'processedData/antsCorticalThickness_inMNI'); os.environ['CTDIR'] = ctdir
-
     if parc_str == 'lausanne':
-        # cortical thickness text file name
-        ct_file_name = 'ct_' + parc_str + str(parc_scale) + '.txt'; os.environ['CT_FILE_NAME'] = ct_file_name
-        
         # Structural connectivity derivatives
         scdir = os.path.join(derivsdir, 'processedData/diffusion/deterministic_dec2016', edge_weight, 'LausanneScale' + str(parc_scale)); os.environ['SCDIR'] = scdir
 
@@ -53,8 +47,6 @@ def set_proj_env(dataset = 'PNC', train_test_str = 'squeakycleanExclude', exclud
         if edge_weight == 'streamlineCount': os.environ['CONN_STR'] = 'connectivity'
         elif edge_weight == 'volNormStreamline': os.environ['CONN_STR'] = 'volNorm_connectivity'
     elif parc_str == 'schaefer':
-        ct_file_name = 'ct_' + parc_str + str(parc_scale) + '_17.txt'; os.environ['CT_FILE_NAME'] = ct_file_name
-        
         scdir = os.path.join(derivsdir, 'processedData/diffusion/deterministic_20171118'); os.environ['SCDIR'] = scdir
         sc_name_tmp = 'bblid/*xscanid/tractography/connectivity/bblid_*xscanid_SchaeferPNC_' + str(parc_scale) + '_dti_streamlineCount_connectivity.mat'; os.environ['SC_NAME_TMP'] = sc_name_tmp
 
