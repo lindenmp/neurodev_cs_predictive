@@ -25,13 +25,13 @@ combo_label=schaefer_400_streamlineCount
 # combo_label=lausanne_234_streamlineCount
 # combo_label=lausanne_129_streamlineCount
 
-normativedir=/scratch/kg98/Linden/ResProjects/NormativeNeuroDev_CrossSec/analysis/normative/t1Exclude/squeakycleanExclude/${combo_label}/ageAtScan1_Years+sex_adj/
-# normativedir=/scratch/kg98/Linden/ResProjects/NormativeNeuroDev_CrossSec/analysis/normative/fsFinalExclude/squeakycleanExclude/${combo_label}/ageAtScan1_Years+sex_adj/
+normativedir=/scratch/kg98/Linden/ResProjects/NormativeNeuroDev_CrossSec_DWI/analysis/normative/t1Exclude/squeakycleanExclude/${combo_label}/ageAtScan1_Years+sex_adj/
+# normativedir=/scratch/kg98/Linden/ResProjects/NormativeNeuroDev_CrossSec_DWI/analysis/normative/fsFinalExclude/squeakycleanExclude/${combo_label}/ageAtScan1_Years+sex_adj/
 
 wdir=${normativedir}perm_all/${perm}/
 cd ${wdir}
 /home/lindenmp/virtual_env/NeuroDev_NetworkControl/bin/python \
-	/scratch/kg98/Linden/ResProjects/NormativeNeuroDev_CrossSec/code/nispat/nispat/normative.py \
+	/scratch/kg98/Linden/ResProjects/NormativeNeuroDev_CrossSec_DWI/code/nispat/nispat/normative.py \
 	-c ${wdir}cov_train.txt \
 	-t ${wdir}cov_test.txt \
 	-r ${normativedir}resp_test.txt \

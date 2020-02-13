@@ -16,7 +16,7 @@ combo_label = 'schaefer_400_streamlineCount'
 # combo_label = 'lausanne_129_streamlineCount'
 
 # Cross-sec
-normativedir = os.path.join('/Users/lindenmp/Dropbox/Work/ResProjects/NormativeNeuroDev_CrossSec/analysis/normative',
+normativedir = os.path.join('/Users/lindenmp/Dropbox/Work/ResProjects/NormativeNeuroDev_CrossSec_DWI/analysis/normative',
 	exclude_str, 'squeakycleanExclude', combo_label, 'ageAtScan1_Years+sex_adj/') # Linden's Macbook Pro
 
 print(normativedir)
