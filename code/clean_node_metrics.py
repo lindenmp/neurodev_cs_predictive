@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 # In[2]:
 
 
-sys.path.append('/Users/lindenmp/Dropbox/Work/ResProjects/NormativeNeuroDev_CrossSec/code/func/')
+sys.path.append('/Users/lindenmp/Dropbox/Work/ResProjects/NormativeNeuroDev_CrossSec_DWI/code/func/')
 from proj_environment import set_proj_env
 from func import mark_outliers, winsorize_outliers_signed
 
@@ -49,9 +49,19 @@ print(os.environ['MODELDIR'])
 if not os.path.exists(os.environ['MODELDIR']): os.makedirs(os.environ['MODELDIR'])
 
 
-# ## Load data
+# ### Data processing options
 
 # In[5]:
+
+
+wins_data = True
+my_thresh = 3
+norm_data = True
+
+
+# ## Load data
+
+# In[6]:
 
 
 # Load data
@@ -60,7 +70,7 @@ df.set_index(['bblid', 'scanid'], inplace = True)
 print(df.shape)
 
 
-# In[6]:
+# In[7]:
 
 
 # Load data
@@ -69,48 +79,39 @@ df_node.set_index(['bblid', 'scanid'], inplace = True)
 print(df_node.shape)
 
 
-# In[7]:
+# In[8]:
 
 
 df_node.head()
 
 
+# ### Compute whole brain averages
+
+# In[9]:
+
+
+metrics = ('str', 'ac', 'mc')
+df_node_mean = pd.DataFrame(index = df_node.index, columns = metrics)
+for metric in metrics:
+    df_node_mean[metric] = df_node.filter(regex = metric, axis = 1).mean(axis = 1)
+
+
 # # Plots
 
-# In[8]:
+# In[10]:
 
 
 # Labels
 sns.set(style='white', context = 'talk', font_scale = .8)
 
 
-# In[9]:
-
-
-metric_x = 'ageAtScan1'
-metric_y = 'network_density'
-f = sns.jointplot(x = df[metric_x], y = df[metric_y], kind="reg")
-f.annotate(sp.stats.pearsonr)
-f.plot_joint(plt.scatter, c = "k", s = 5, linewidth = 2, marker = ".", alpha = 0.3)
-f.ax_joint.collections[0].set_alpha(0)
-
-
-# In[10]:
-
-
-metrics = ('ct', 'str', 'ac', 'mc')
-df_node_mean = pd.DataFrame(index = df_node.index, columns = metrics)
-for metric in metrics:
-    df_node_mean[metric] = df_node.filter(regex = metric, axis = 1).mean(axis = 1)
-
-
 # In[11]:
 
 
 metric_x = 'ageAtScan1'
-metric_y = 'ct'
-f = sns.jointplot(x = df[metric_x], y = df_node_mean[metric_y], kind="reg")
-f.annotate(sp.stats.spearmanr)
+metric_y = 'mprage_antsCT_vol_TBV'
+f = sns.jointplot(x = df[metric_x], y = df[metric_y], kind="reg")
+f.annotate(sp.stats.pearsonr)
 f.plot_joint(plt.scatter, c = "k", s = 5, linewidth = 2, marker = ".", alpha = 0.3)
 f.ax_joint.collections[0].set_alpha(0)
 
@@ -118,10 +119,10 @@ f.ax_joint.collections[0].set_alpha(0)
 # In[12]:
 
 
-metric_x = 'network_density'
+metric_x = 'ageAtScan1'
 metric_y = 'str'
 f = sns.jointplot(x = df[metric_x], y = df_node_mean[metric_y], kind="reg")
-f.annotate(sp.stats.spearmanr)
+f.annotate(sp.stats.pearsonr)
 f.plot_joint(plt.scatter, c = "k", s = 5, linewidth = 2, marker = ".", alpha = 0.3)
 f.ax_joint.collections[0].set_alpha(0)
 
@@ -129,19 +130,15 @@ f.ax_joint.collections[0].set_alpha(0)
 # In[13]:
 
 
-metric_x = 'network_density'
-metric_y = 'ac'
-f = sns.jointplot(x = df[metric_x], y = df_node_mean[metric_y], kind="reg")
-f.annotate(sp.stats.spearmanr)
-f.plot_joint(plt.scatter, c = "k", s = 5, linewidth = 2, marker = ".", alpha = 0.3)
-f.ax_joint.collections[0].set_alpha(0)
+metric_x = 'mprage_antsCT_vol_TBV'
+# metric_x = 'network_density'
+# metric_x = 'streamline_count'
 
 
 # In[14]:
 
 
-metric_x = 'network_density'
-metric_y = 'mc'
+metric_y = 'str'
 f = sns.jointplot(x = df[metric_x], y = df_node_mean[metric_y], kind="reg")
 f.annotate(sp.stats.spearmanr)
 f.plot_joint(plt.scatter, c = "k", s = 5, linewidth = 2, marker = ".", alpha = 0.3)
@@ -151,14 +148,28 @@ f.ax_joint.collections[0].set_alpha(0)
 # In[15]:
 
 
-my_thresh = 3
+metric_y = 'ac'
+f = sns.jointplot(x = df[metric_x], y = df_node_mean[metric_y], kind="reg")
+f.annotate(sp.stats.spearmanr)
+f.plot_joint(plt.scatter, c = "k", s = 5, linewidth = 2, marker = ".", alpha = 0.3)
+f.ax_joint.collections[0].set_alpha(0)
 
 
 # In[16]:
 
 
+metric_y = 'mc'
+f = sns.jointplot(x = df[metric_x], y = df_node_mean[metric_y], kind="reg")
+f.annotate(sp.stats.spearmanr)
+f.plot_joint(plt.scatter, c = "k", s = 5, linewidth = 2, marker = ".", alpha = 0.3)
+f.ax_joint.collections[0].set_alpha(0)
+
+
+# In[17]:
+
+
 for metric in metrics:
-    x = df_node_mean.loc[:,metric].copy()
+    x = df_node.filter(regex = metric, axis = 1).mean(axis = 1)
     outliers = mark_outliers(x, thresh = my_thresh)
     print(metric + ': ' + str(np.round((outliers.sum() / x.shape[0]) * 100,2)))
 
@@ -169,7 +180,7 @@ for metric in metrics:
 
 # ### Check frequency of outliers
 
-# In[17]:
+# In[18]:
 
 
 df_node_mask = pd.DataFrame(index = df_node.index, columns = df_node.columns)
@@ -178,8 +189,8 @@ for i, col in enumerate(df_node.columns):
     x_out = mark_outliers(x, thresh = my_thresh)
     df_node_mask.loc[:,col] = x_out
 
-f, axes = plt.subplots(1,4)
-f.set_figwidth(20)
+f, axes = plt.subplots(1,len(metrics))
+f.set_figwidth(len(metrics)*5)
 f.set_figheight(5)
 
 for i, metric in enumerate(metrics):
@@ -187,16 +198,81 @@ for i, metric in enumerate(metrics):
         sns.distplot(df_node_mask.filter(regex = metric).sum()/df_node_mask.filter(regex = metric).shape[0]*100, ax = axes[i])
 
 
-# In[18]:
-
-
-for i, col in enumerate(df_node.columns):
-    x = df_node.loc[:,col].copy()
-    x_out = winsorize_outliers_signed(x, thresh = my_thresh)
-    df_node.loc[:,col] = x_out
-
+# ### Winsorize outliers
 
 # In[19]:
+
+
+if wins_data:
+    for i, col in enumerate(df_node.columns):
+        x = df_node.loc[:,col].copy()
+        x_out = winsorize_outliers_signed(x, thresh = my_thresh)
+        df_node.loc[:,col] = x_out
+else:
+    print('Skipping...')
+
+
+# ## Normalize
+
+# In[20]:
+
+
+if np.any(df_node<0):
+    print('WARNING: some regional values are <0.. box cox will fail')
+
+
+# In[21]:
+
+
+rank_r = np.zeros(df_node.filter(regex = 'ac|mc').shape[1])
+
+
+# In[22]:
+
+
+# normalise
+if norm_data:
+    for i, col in enumerate(df_node.filter(regex = 'ac|mc').columns):
+        # normalize regional metric
+        x = sp.stats.boxcox(df_node.loc[:,col])[0]
+        # check if rank order is preserved
+        rank_r[i] = sp.stats.spearmanr(df_node.loc[:,col],x)[0]
+        # store normalized version
+        df_node.loc[:,col] = x
+else:
+    print('Skipping...')
+
+
+# In[23]:
+
+
+np.sum(rank_r < .99)
+
+
+# ### Check distributions
+
+# In[24]:
+
+
+f, axes = plt.subplots(2,len(metrics))
+f.set_figwidth(len(metrics)*5)
+f.set_figheight(10)
+
+for i, metric in enumerate(metrics):
+    kur = np.zeros((df_node.filter(regex = metric).shape[1]))
+    skew = np.zeros((df_node.filter(regex = metric).shape[1]))
+    for j, node in enumerate(df_node.filter(regex = metric).columns):
+        d = sp.stats.zscore(df_node.filter(regex = metric).loc[:,node])
+        kur[j] = sp.stats.kurtosistest(d)[0]
+        skew[j] = sp.stats.skewtest(d)[0]
+    
+    sns.distplot(kur, ax = axes[0,i])
+    axes[0,i].set_xlabel(metric+': kurtosis')
+    sns.distplot(skew, ax = axes[1,i])
+    axes[1,i].set_xlabel(metric+': skewness')
+
+
+# In[25]:
 
 
 my_str = os.environ['MODELDIR'].split('/')[-1]
@@ -204,7 +280,7 @@ my_str = my_str.split('_')[-1]
 my_str
 
 
-# In[20]:
+# In[26]:
 
 
 if my_str == 'nuis-streamline' or my_str == 'nuis-netdens':
@@ -212,9 +288,11 @@ if my_str == 'nuis-streamline' or my_str == 'nuis-netdens':
 elif my_str == 'nuis-str':
     df_str = df_node.filter(regex = 'str', axis = 1).copy()
     df_node = df_node.filter(regex = 'squeakycleanExclude|ac|mc', axis = 1)
+else:
+    print('skipping...')
 
 
-# In[21]:
+# In[27]:
 
 
 df_node.shape
@@ -222,29 +300,13 @@ df_node.shape
 
 # ## Nuisance regression
 
-# ### cortical thickness
-
-# In[22]:
+# In[28]:
 
 
-if my_str == 'nuis-streamline' or my_str == 'nuis-netdens' or my_str == 'nuis-str':
-    print('Skipping...')
-else:
-    # labels of nuisance regressors
-    nuis = ['mprage_antsCT_vol_TBV','averageManualRating']
-    print(nuis)
-    df_nuis = df[nuis]
-    df_nuis = sm.add_constant(df_nuis)
-
-    cols = df_node.filter(regex = 'ct', axis = 1).columns
-
-    mdl = sm.OLS(df_node.loc[:,cols].astype(float), df_nuis.astype(float)).fit()
-    y_pred = mdl.predict(df_nuis)
-    y_pred.columns = cols
-    df_node.loc[:,cols] = df_node.loc[:,cols] - y_pred
+df_node_bak = df_node.copy()
 
 
-# In[23]:
+# In[29]:
 
 
 if my_str == 'nuis-str':
@@ -257,7 +319,7 @@ if my_str == 'nuis-str':
         col_nuis = 'str_' + col.split('_')[1]
         df_nuis.loc[:,'str'] = df_str.loc[:,col_nuis]
 
-        mdl = sm.OLS(df_node.loc[:,col].astype(float), df_nuis.astype(float)).fit()
+        mdl = sm.OLS(df_node.loc[:,col], df_nuis).fit()
         y_pred = mdl.predict(df_nuis)
         df_node.loc[:,col] = df_node.loc[:,col] - y_pred
 else:
@@ -272,31 +334,55 @@ else:
     print(nuis)
     df_nuis = sm.add_constant(df_nuis)
 
-    cols = df_node.filter(regex = 'str|ac|mc', axis = 1).columns
+    my_str = '|'.join(metrics); print(my_str)
+    cols = df_node.filter(regex = my_str, axis = 1).columns
 
-    mdl = sm.OLS(df_node.loc[:,cols].astype(float), df_nuis.astype(float)).fit()
+    mdl = sm.OLS(df_node.loc[:,cols], df_nuis).fit()
     y_pred = mdl.predict(df_nuis)
     y_pred.columns = cols
     df_node.loc[:,cols] = df_node.loc[:,cols] - y_pred
 
 
-# In[24]:
+# In[30]:
 
 
-f = sns.jointplot(x = df['ageAtScan1_Years'], y = df_node['ct_0'], kind="reg")
+r = np.zeros(df_node.shape[1])
+for i, col in enumerate(df_node.columns):
+    r[i] = sp.stats.spearmanr(df_node_bak[col],df_node[col])[0]
+sns.distplot(r)
+
+
+# In[31]:
+
+
+f = sns.jointplot(x = df['ageAtScan1_Years'], y = df_node['str_0'], kind="reg")
 f.annotate(sp.stats.spearmanr)
 # f.annotate(sp.stats.pearsonr)
 f.plot_joint(plt.scatter, c = "k", s = 5, linewidth = 2, marker = ".", alpha = 0.3)
 f.ax_joint.collections[0].set_alpha(0)
 
 
-# In[25]:
+# In[32]:
 
 
-df_node.head()
+f = sns.jointplot(x = df['ageAtScan1_Years'], y = df_node['ac_0'], kind="reg")
+f.annotate(sp.stats.spearmanr)
+# f.annotate(sp.stats.pearsonr)
+f.plot_joint(plt.scatter, c = "k", s = 5, linewidth = 2, marker = ".", alpha = 0.3)
+f.ax_joint.collections[0].set_alpha(0)
 
 
-# In[26]:
+# In[33]:
+
+
+f = sns.jointplot(x = df['ageAtScan1_Years'], y = df_node['mc_0'], kind="reg")
+f.annotate(sp.stats.spearmanr)
+# f.annotate(sp.stats.pearsonr)
+f.plot_joint(plt.scatter, c = "k", s = 5, linewidth = 2, marker = ".", alpha = 0.3)
+f.ax_joint.collections[0].set_alpha(0)
+
+
+# In[34]:
 
 
 df_node.isna().any().any()
@@ -304,9 +390,10 @@ df_node.isna().any().any()
 
 # ## Save out
 
-# In[27]:
+# In[35]:
 
 
 # Save out
 df_node.to_csv(os.path.join(os.environ['MODELDIR'], 'df_node_clean.csv'))
+# df_node.to_csv(os.path.join(os.environ['MODELDIR'], 'df_node_clean_my_thresh-'+str(my_thresh)+'.csv'))
 
