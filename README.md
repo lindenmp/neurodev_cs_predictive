@@ -1,7 +1,44 @@
-# Normative neurodevelopment
-This repository includes code used to analyze the relationship between dimensional psychopathology phenotypes and deviations from normative neurodevelopment in the Philadelphia Neurodevelopmental Cohort.
+# Normative Neurodevelopment: Cross-sectional predictive modeling
+<!-- This repository includes code used to analyze the relationship between dimensional psychopathology phenotypes and deviations from normative neurodevelopment in the Philadelphia Neurodevelopmental Cohort. -->
 
-# Code
+# Environment build
+
+    conda create -n NormativeNeuroDev_CrossSec_DWI python=3.7
+    conda activate NormativeNeuroDev_CrossSec_DWI
+    # Essentials
+    pip install jupyterlab ipython pandas numpy scipy seaborn matplotlib
+    pip install jupyter_contrib_nbextensions && jupyter contrib nbextension install
+	# Statistics
+	pip install statsmodels sklearn tensorflow pingouin
+	# Extras
+    pip install nibabel torch glob3
+    cd /Users/lindenmp/Dropbox/Work/ResProjects/NormativeNeuroDev_CrossSec_DWI
+    conda env export > environment.yml
+
+# Environment build (cluster)
+
+	# Make environment
+	module load python/3.7.3-system
+	cd /home/lindenmp/virtual_env
+	virtualenv NormativeNeuroDev_CrossSec_DWI
+	source /home/lindenmp/virtual_env/NormativeNeuroDev_CrossSec_DWI/bin/activate
+
+	# Essentials
+	pip install --upgrade pip
+	pip install ipython pandas scipy nibabel sklearn torch glob3
+
+	# Nispat
+	mkdir -p /scratch/kg98/Linden/ResProjects/NormativeNeuroDev_CrossSec_DWI/
+	cd /scratch/kg98/Linden/ResProjects/NormativeNeuroDev_CrossSec_DWI/
+	git clone https://github.com/lindenmp/nispat.git
+	cd /scratch/kg98/Linden/ResProjects/NormativeNeuroDev_CrossSec_DWI/nispat
+	python setup.py install
+
+	cd /scratch/kg98/Linden/ResProjects/NormativeNeuroDev_CrossSec_DWI/
+	pip freeze > requirements_m3.txt
+
+
+<!-- # Code
 
 In the **code** subdirectory you will find the following Jupyter notebooks and .py scripts:
 1. Pre-normative modeling scripts:
@@ -29,4 +66,4 @@ In the **code** subdirectory you will find the following Jupyter notebooks and .
 - `results_s2.ipynb`
 	- Produces Figures 3 and 4
 - `results_s3.ipynb`
-	- Produces Figure 5
+	- Produces Figure 5 -->
