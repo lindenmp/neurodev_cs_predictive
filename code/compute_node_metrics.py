@@ -10,6 +10,7 @@ import os, sys, glob
 import pandas as pd
 import numpy as np
 import scipy.io as sio
+import nibabel as nib
 
 
 # In[2]:
@@ -24,9 +25,9 @@ from func import node_strength, ave_control, modal_control
 
 
 train_test_str = 'squeakycleanExclude'
-exclude_str = 't1Exclude' # 't1Exclude' 'fsFinalExclude'
-parc_str = 'schaefer' # 'schaefer' 'lausanne'
-parc_scale = 400 # 200 400 | 60 125
+exclude_str = 't1Exclude'
+parc_str = 'schaefer'
+parc_scale = 200
 parcel_names, parcel_loc, drop_parcels, num_parcels, yeo_idx, yeo_labels = set_proj_env(train_test_str = train_test_str, exclude_str = exclude_str,
                                                                             parc_str = parc_str, parc_scale = parc_scale)
 
@@ -69,19 +70,84 @@ if parc_str == 'schaefer' and parc_scale == 200:
 
 
 # output dataframe
+ct_labels = ['ct_' + str(i) for i in range(num_parcels)]
+vol_labels = ['vol_' + str(i) for i in range(num_parcels)]
 str_labels = ['str_' + str(i) for i in range(num_parcels)]
 ac_labels = ['ac_' + str(i) for i in range(num_parcels)]
 mc_labels = ['mc_' + str(i) for i in range(num_parcels)]
 
-df_node = pd.DataFrame(index = df.index, columns = str_labels + ac_labels + mc_labels)
+df_node = pd.DataFrame(index = df.index, columns = ct_labels + vol_labels + str_labels + ac_labels + mc_labels)
 df_node.insert(0, train_test_str, df[train_test_str])
 
 print(df_node.shape)
 
 
-# ## Load in connectivity matrices and compute node metrics
+# ## Load in cortical thickness and volume
 
 # In[9]:
+
+
+CT = np.zeros((df.shape[0], num_parcels))
+
+for (i, (index, row)) in enumerate(df.iterrows()):
+    file_name = os.environ['CT_NAME_TMP'].replace("bblid", str(index[0]))
+    file_name = file_name.replace("scanid", str(index[1]))
+    full_path = glob.glob(os.path.join(os.environ['CTDIR'], file_name))
+    if i == 0: print(full_path)    
+
+    ct = np.loadtxt(full_path[0])
+    CT[i,:] = ct
+    
+df_node.loc[:,ct_labels] = CT
+
+
+# In[10]:
+
+
+# subject filter
+subj_filt = np.zeros((df.shape[0],)).astype(bool)
+
+
+# In[11]:
+
+
+VOL = np.zeros((df.shape[0], num_parcels))
+
+for (i, (index, row)) in enumerate(df.iterrows()):
+    file_name = os.environ['VOL_NAME_TMP'].replace("bblid", str(index[0]))
+    file_name = file_name.replace("scanid", str(index[1]))
+    full_path = glob.glob(os.path.join(os.environ['VOLDIR'], file_name))
+    if i == 0: print(full_path)    
+    
+    img = nib.load(full_path[0])
+    v = np.array(img.dataobj)
+    v = v[v != 0]
+    unique_elements, counts_elements = np.unique(v, return_counts=True)
+    if len(unique_elements) == num_parcels:
+        VOL[i,:] = counts_elements
+    else:
+        print(str(index) + '. Warning: not all parcels present')
+        subj_filt[i] = True
+    
+df_node.loc[:,vol_labels] = VOL
+
+
+# In[12]:
+
+
+np.sum(subj_filt)
+
+
+# ## Load in connectivity matrices and compute node metrics
+
+# In[13]:
+
+
+# subject filter
+subj_filt = np.zeros((df.shape[0],)).astype(bool)
+
+
+# In[14]:
 
 
 # fc stored as 3d matrix, subjects of 3rd dim
@@ -90,32 +156,12 @@ S = np.zeros((df.shape[0], num_parcels))
 AC = np.zeros((df.shape[0], num_parcels))
 MC = np.zeros((df.shape[0], num_parcels))
 
-# subject filter
-subj_filt = np.zeros((df.shape[0],)).astype(bool)
-
 for (i, (index, row)) in enumerate(df.iterrows()):
-    if parc_str == 'lausanne':
-        file_name = os.environ['SC_NAME_TMP'].replace("scanid", str(index[1]))
-        full_path = os.path.join(os.environ['SCDIR'], file_name)
-        try:
-            mat_contents = sio.loadmat(full_path)
-            a = mat_contents[os.environ['CONN_STR']]
-
-            A[:,:,i] = a
-            S[i,:] = node_strength(a)
-            AC[i,:] = ave_control(a)
-            MC[i,:] = modal_control(a)
-        except FileNotFoundError:
-            print(file_name + ': NOT FOUND')
-            subj_filt[i] = True
-            A[:,:,i] = np.full((num_parcels, num_parcels), np.nan)
-            S[i,:] = np.full(num_parcels, np.nan)
-            AC[i,:] = np.full(num_parcels, np.nan)
-            MC[i,:] = np.full(num_parcels, np.nan)
-    elif parc_str == 'schaefer':
+    if parc_str == 'schaefer':
         file_name = os.environ['SC_NAME_TMP'].replace("scanid", str(index[1]))
         file_name = file_name.replace("bblid", str(index[0]))
         full_path = glob.glob(os.path.join(os.environ['SCDIR'], file_name))
+        if i == 0: print(full_path)
         if len(full_path) > 0:
             mat_contents = sio.loadmat(full_path[0])
             a = mat_contents[os.environ['CONN_STR']]
@@ -137,13 +183,13 @@ df_node.loc[:,ac_labels] = AC
 df_node.loc[:,mc_labels] = MC
 
 
-# In[10]:
+# In[15]:
 
 
 np.sum(subj_filt)
 
 
-# In[11]:
+# In[16]:
 
 
 if any(subj_filt):
@@ -152,9 +198,33 @@ if any(subj_filt):
     df_node = df_node.loc[~subj_filt]
 
 
+# ### Check if any subjects have disconnected nodes in A matrix
+
+# In[17]:
+
+
+# subject filter
+subj_filt = np.zeros((df.shape[0],)).astype(bool)
+
+
+# In[18]:
+
+
+for (i, (index, row)) in enumerate(df.iterrows()):
+    if np.any(np.sum(A[:,:,0], axis = 1) == 0):
+        print(index)
+        subj_filt[i] = True
+
+
+# In[19]:
+
+
+np.sum(subj_filt)
+
+
 # ### Get streamline count and network density
 
-# In[12]:
+# In[20]:
 
 
 A_c = np.zeros((A.shape[2],))
@@ -169,13 +239,13 @@ df['network_density'] = A_d
 
 # ## Save out
 
-# In[13]:
+# In[21]:
 
 
 os.environ['MODELDIR']
 
 
-# In[14]:
+# In[22]:
 
 
 # Save out

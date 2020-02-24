@@ -23,9 +23,9 @@ from func import get_synth_cov
 
 
 train_test_str = 'squeakycleanExclude'
-exclude_str = 't1Exclude' # 't1Exclude' 'fsFinalExclude'
-parc_str = 'schaefer' # 'schaefer' 'lausanne'
-parc_scale = 400 # 200 400 | 60 125
+exclude_str = 't1Exclude'
+parc_str = 'schaefer'
+parc_scale = 200
 extra_str = ''
 # extra_str = '_nuis-netdens'
 # extra_str = '_nuis-str'
@@ -77,7 +77,7 @@ df_node.head()
 
 # Note, 'ageAtScan1_Years' is assumed to be covs[0] and 'sex_adj' is assumed to be covs[1]
 # if more than 2 covs are to be used, append to the end and age/sex will be duplicated accordingly in the forward model
-covs = ['ageAtScan1_Years', 'sex_adj']
+covs = ['ageAtScan1', 'sex_adj']
 
 print(covs)
 num_covs = len(covs)
@@ -136,7 +136,7 @@ fwddir = os.path.join(normativedir, 'forward/')
 if not os.path.exists(fwddir): os.mkdir(fwddir)
 
 # Synthetic cov data
-x = get_synth_cov(df, cov = 'ageAtScan1_Years', stp = 1)
+x = get_synth_cov(df, cov = 'ageAtScan1', stp = 12)
 
 if 'sex_adj' in covs:
     # Produce gender dummy variable for one repeat --> i.e., to account for two runs of ages, one per gender
@@ -150,25 +150,35 @@ print(synth_cov.shape)
 np.savetxt(os.path.join(fwddir, 'synth_cov_test.txt'), synth_cov, delimiter = ' ', fmt = ['%.1f', '%.d'])
 
 
-# ### Permutation test | train and test | no blocks
+# ### Cross-val variant
 
 # In[13]:
 
 
-# number of permutations
-num_perms = 1000
+# Create subdirectory for specific normative model -- labeled according to parcellation/resolution choices and covariates
+cvdir = os.path.join(normativedir, 'cv/')
+if not os.path.exists(cvdir): os.mkdir(cvdir)
 
-# Set seed for reproducibility
-np.random.seed(0)
 
-for i in range(num_perms):
-    permdir = os.path.join(normativedir, 'perm_all/perm_' + str(i))
-    if not os.path.exists(permdir): os.makedirs(permdir)
+# ### Permutation test | train and test | no blocks
 
-    df_shuffed = df.copy()
-    df_shuffed.loc[:,covs] = df_shuffed[covs].sample(frac = 1).values
-    df_shuffed.loc[:,covs[1]] = df_shuffed.loc[:,covs[1]].astype(int)
+# In[14]:
 
-    df_shuffed[df_shuffed[train_test_str] == 0].to_csv(os.path.join(permdir, 'cov_train.txt'), columns = covs, sep = ' ', index = False, header = False)
-    df_shuffed[df_shuffed[train_test_str] == 1].to_csv(os.path.join(permdir, 'cov_test.txt'), columns = covs, sep = ' ', index = False, header = False)
+
+# # number of permutations
+# num_perms = 1000
+
+# # Set seed for reproducibility
+# np.random.seed(0)
+
+# for i in range(num_perms):
+#     permdir = os.path.join(normativedir, 'perm_all/perm_' + str(i))
+#     if not os.path.exists(permdir): os.makedirs(permdir)
+
+#     df_shuffed = df.copy()
+#     df_shuffed.loc[:,covs] = df_shuffed[covs].sample(frac = 1).values
+#     df_shuffed.loc[:,covs[1]] = df_shuffed.loc[:,covs[1]].astype(int)
+
+#     df_shuffed[df_shuffed[train_test_str] == 0].to_csv(os.path.join(permdir, 'cov_train.txt'), columns = covs, sep = ' ', index = False, header = False)
+#     df_shuffed[df_shuffed[train_test_str] == 1].to_csv(os.path.join(permdir, 'cov_test.txt'), columns = covs, sep = ' ', index = False, header = False)
 

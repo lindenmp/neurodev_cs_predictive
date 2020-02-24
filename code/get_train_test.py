@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+plt.rcParams['svg.fonttype'] = 'none'
 import statsmodels.api as sm
 
 
@@ -26,9 +27,9 @@ from func import get_cmap
 
 
 train_test_str = 'squeakycleanExclude'
-exclude_str = 't1Exclude' # 't1Exclude' 'fsFinalExclude'
-parc_str = 'schaefer' # 'schaefer' 'lausanne'
-parc_scale = 400 # 200 400 | 60 125
+exclude_str = 't1Exclude'
+parc_str = 'schaefer'
+parc_scale = 200
 _ = set_proj_env(train_test_str = train_test_str, exclude_str = exclude_str, parc_str = parc_str, parc_scale = parc_scale)
 
 
@@ -81,19 +82,12 @@ df.set_index(['bblid', 'scanid'], inplace = True)
 # In[6]:
 
 
-# Convert age to years
-df['ageAtScan1_Years'] = np.round(df.ageAtScan1/12, decimals=1)
-
-
-# In[7]:
-
-
 df.head()
 
 
 # # Filter subjects
 
-# In[8]:
+# In[7]:
 
 
 # 1) Primary sample filter
@@ -111,13 +105,13 @@ df = df[df['dti64Exclude'] == 0]
 print('N after Diffusion exclusion:', df.shape[0])
 
 
-# In[9]:
+# In[8]:
 
 
 df['dti64QAManualScore'].unique()
 
 
-# In[10]:
+# In[9]:
 
 
 np.sum(df['dti64QAManualScore'] == 2)
@@ -125,7 +119,7 @@ np.sum(df['dti64QAManualScore'] == 2)
 
 # # Define train/test split
 
-# In[11]:
+# In[10]:
 
 
 if train_test_str == 'squeakycleanExclude':
@@ -142,6 +136,13 @@ if train_test_str == 'squeakycleanExclude':
 # # Characterise train/test split
 
 # ## Train/Test split
+
+# In[11]:
+
+
+# Convert age to years
+df['ageAtScan1_Years'] = np.round(df.ageAtScan1/12, decimals=1)
+
 
 # In[12]:
 
@@ -207,8 +208,6 @@ df['sex'].unique()
 np.sum(df.loc[df[train_test_str] == 1,'sex'] == 2)
 
 
-# Figure 2A
-
 # In[17]:
 
 
@@ -244,8 +243,6 @@ f.savefig('age_distributions.svg', dpi = 300, bbox_inches = 'tight', pad_inches 
 
 
 # ## Phenotype distributions over train/test
-
-# Figure 2B
 
 # In[18]:
 

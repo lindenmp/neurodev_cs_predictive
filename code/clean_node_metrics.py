@@ -15,6 +15,7 @@ import scipy.io as sio
 import statsmodels.api as sm
 import seaborn as sns
 import matplotlib.pyplot as plt
+plt.rcParams['svg.fonttype'] = 'none'
 
 
 # In[2]:
@@ -29,9 +30,9 @@ from func import mark_outliers, winsorize_outliers_signed
 
 
 train_test_str = 'squeakycleanExclude'
-exclude_str = 't1Exclude' # 't1Exclude' 'fsFinalExclude'
-parc_str = 'schaefer' # 'schaefer' 'lausanne'
-parc_scale = 400 # 200 400 | 60 125
+exclude_str = 't1Exclude'
+parc_str = 'schaefer'
+parc_scale = 200
 extra_str = ''
 # extra_str = '_nuis-netdens'
 # extra_str = '_nuis-str'
@@ -85,12 +86,19 @@ print(df_node.shape)
 df_node.head()
 
 
-# ### Compute whole brain averages
-
 # In[9]:
 
 
-metrics = ('str', 'ac', 'mc')
+metrics = ('ct', 'vol', 'str', 'ac', 'mc')
+dwi_metrics = ('str', 'ac', 'mc')
+t1_metrics = ('ct', 'vol')
+
+
+# ### Compute whole brain averages
+
+# In[10]:
+
+
 df_node_mean = pd.DataFrame(index = df_node.index, columns = metrics)
 for metric in metrics:
     df_node_mean[metric] = df_node.filter(regex = metric, axis = 1).mean(axis = 1)
@@ -98,14 +106,14 @@ for metric in metrics:
 
 # # Plots
 
-# In[10]:
+# In[11]:
 
 
 # Labels
-sns.set(style='white', context = 'talk', font_scale = .8)
+sns.set(style='white', context = 'talk', font_scale = 1)
 
 
-# In[11]:
+# In[12]:
 
 
 metric_x = 'ageAtScan1'
@@ -116,7 +124,7 @@ f.plot_joint(plt.scatter, c = "k", s = 5, linewidth = 2, marker = ".", alpha = 0
 f.ax_joint.collections[0].set_alpha(0)
 
 
-# In[12]:
+# In[13]:
 
 
 metric_x = 'ageAtScan1'
@@ -127,7 +135,7 @@ f.plot_joint(plt.scatter, c = "k", s = 5, linewidth = 2, marker = ".", alpha = 0
 f.ax_joint.collections[0].set_alpha(0)
 
 
-# In[13]:
+# In[14]:
 
 
 metric_x = 'mprage_antsCT_vol_TBV'
@@ -135,7 +143,7 @@ metric_x = 'mprage_antsCT_vol_TBV'
 # metric_x = 'streamline_count'
 
 
-# In[14]:
+# In[15]:
 
 
 metric_y = 'str'
@@ -145,7 +153,7 @@ f.plot_joint(plt.scatter, c = "k", s = 5, linewidth = 2, marker = ".", alpha = 0
 f.ax_joint.collections[0].set_alpha(0)
 
 
-# In[15]:
+# In[16]:
 
 
 metric_y = 'ac'
@@ -155,7 +163,7 @@ f.plot_joint(plt.scatter, c = "k", s = 5, linewidth = 2, marker = ".", alpha = 0
 f.ax_joint.collections[0].set_alpha(0)
 
 
-# In[16]:
+# In[17]:
 
 
 metric_y = 'mc'
@@ -165,10 +173,10 @@ f.plot_joint(plt.scatter, c = "k", s = 5, linewidth = 2, marker = ".", alpha = 0
 f.ax_joint.collections[0].set_alpha(0)
 
 
-# In[17]:
+# In[18]:
 
 
-for metric in metrics:
+for metric in dwi_metrics:
     x = df_node.filter(regex = metric, axis = 1).mean(axis = 1)
     outliers = mark_outliers(x, thresh = my_thresh)
     print(metric + ': ' + str(np.round((outliers.sum() / x.shape[0]) * 100,2)))
@@ -180,7 +188,7 @@ for metric in metrics:
 
 # ### Check frequency of outliers
 
-# In[18]:
+# In[19]:
 
 
 df_node_mask = pd.DataFrame(index = df_node.index, columns = df_node.columns)
@@ -189,22 +197,28 @@ for i, col in enumerate(df_node.columns):
     x_out = mark_outliers(x, thresh = my_thresh)
     df_node_mask.loc[:,col] = x_out
 
-f, axes = plt.subplots(1,len(metrics))
-f.set_figwidth(len(metrics)*5)
+f, axes = plt.subplots(1,len(dwi_metrics))
+f.set_figwidth(len(dwi_metrics)*5)
 f.set_figheight(5)
 
-for i, metric in enumerate(metrics):
+for i, metric in enumerate(dwi_metrics):
     if df_node_mask.filter(regex = metric).sum().any():
         sns.distplot(df_node_mask.filter(regex = metric).sum()/df_node_mask.filter(regex = metric).shape[0]*100, ax = axes[i])
 
 
 # ### Winsorize outliers
 
-# In[19]:
+# In[20]:
+
+
+my_str = '|'.join(dwi_metrics); print(my_str)
+
+
+# In[21]:
 
 
 if wins_data:
-    for i, col in enumerate(df_node.columns):
+    for i, col in enumerate(df_node.filter(regex = my_str).columns):
         x = df_node.loc[:,col].copy()
         x_out = winsorize_outliers_signed(x, thresh = my_thresh)
         df_node.loc[:,col] = x_out
@@ -214,25 +228,25 @@ else:
 
 # ## Normalize
 
-# In[20]:
+# In[22]:
 
 
 if np.any(df_node<0):
     print('WARNING: some regional values are <0.. box cox will fail')
 
 
-# In[21]:
+# In[23]:
 
 
-rank_r = np.zeros(df_node.filter(regex = 'ac|mc').shape[1])
+rank_r = np.zeros(df_node.filter(regex = my_str).shape[1])
 
 
-# In[22]:
+# In[24]:
 
 
 # normalise
 if norm_data:
-    for i, col in enumerate(df_node.filter(regex = 'ac|mc').columns):
+    for i, col in enumerate(df_node.filter(regex = my_str).columns):
         # normalize regional metric
         x = sp.stats.boxcox(df_node.loc[:,col])[0]
         # check if rank order is preserved
@@ -243,7 +257,7 @@ else:
     print('Skipping...')
 
 
-# In[23]:
+# In[25]:
 
 
 np.sum(rank_r < .99)
@@ -251,14 +265,14 @@ np.sum(rank_r < .99)
 
 # ### Check distributions
 
-# In[24]:
+# In[26]:
 
 
-f, axes = plt.subplots(2,len(metrics))
-f.set_figwidth(len(metrics)*5)
+f, axes = plt.subplots(2,len(dwi_metrics))
+f.set_figwidth(len(dwi_metrics)*5)
 f.set_figheight(10)
 
-for i, metric in enumerate(metrics):
+for i, metric in enumerate(dwi_metrics):
     kur = np.zeros((df_node.filter(regex = metric).shape[1]))
     skew = np.zeros((df_node.filter(regex = metric).shape[1]))
     for j, node in enumerate(df_node.filter(regex = metric).columns):
@@ -272,7 +286,7 @@ for i, metric in enumerate(metrics):
     axes[1,i].set_xlabel(metric+': skewness')
 
 
-# In[25]:
+# In[27]:
 
 
 my_str = os.environ['MODELDIR'].split('/')[-1]
@@ -280,7 +294,7 @@ my_str = my_str.split('_')[-1]
 my_str
 
 
-# In[26]:
+# In[28]:
 
 
 if my_str == 'nuis-streamline' or my_str == 'nuis-netdens':
@@ -292,7 +306,7 @@ else:
     print('skipping...')
 
 
-# In[27]:
+# In[29]:
 
 
 df_node.shape
@@ -300,13 +314,31 @@ df_node.shape
 
 # ## Nuisance regression
 
-# In[28]:
+# In[30]:
 
 
 df_node_bak = df_node.copy()
 
 
-# In[29]:
+# In[31]:
+
+
+# labels of nuisance regressors
+nuis = ['averageManualRating']
+print(nuis)
+df_nuis = df[nuis]
+df_nuis = sm.add_constant(df_nuis)
+
+my_str = '|'.join(t1_metrics); print(my_str)
+cols = df_node.filter(regex = my_str, axis = 1).columns
+
+mdl = sm.OLS(df_node.loc[:,cols].astype(float), df_nuis.astype(float)).fit()
+y_pred = mdl.predict(df_nuis)
+y_pred.columns = cols
+df_node.loc[:,cols] = df_node.loc[:,cols] - y_pred
+
+
+# In[32]:
 
 
 if my_str == 'nuis-str':
@@ -334,7 +366,7 @@ else:
     print(nuis)
     df_nuis = sm.add_constant(df_nuis)
 
-    my_str = '|'.join(metrics); print(my_str)
+    my_str = '|'.join(dwi_metrics); print(my_str)
     cols = df_node.filter(regex = my_str, axis = 1).columns
 
     mdl = sm.OLS(df_node.loc[:,cols], df_nuis).fit()
@@ -343,7 +375,7 @@ else:
     df_node.loc[:,cols] = df_node.loc[:,cols] - y_pred
 
 
-# In[30]:
+# In[33]:
 
 
 r = np.zeros(df_node.shape[1])
@@ -352,7 +384,7 @@ for i, col in enumerate(df_node.columns):
 sns.distplot(r)
 
 
-# In[31]:
+# In[34]:
 
 
 f = sns.jointplot(x = df['ageAtScan1_Years'], y = df_node['str_0'], kind="reg")
@@ -362,7 +394,7 @@ f.plot_joint(plt.scatter, c = "k", s = 5, linewidth = 2, marker = ".", alpha = 0
 f.ax_joint.collections[0].set_alpha(0)
 
 
-# In[32]:
+# In[35]:
 
 
 f = sns.jointplot(x = df['ageAtScan1_Years'], y = df_node['ac_0'], kind="reg")
@@ -372,7 +404,7 @@ f.plot_joint(plt.scatter, c = "k", s = 5, linewidth = 2, marker = ".", alpha = 0
 f.ax_joint.collections[0].set_alpha(0)
 
 
-# In[33]:
+# In[36]:
 
 
 f = sns.jointplot(x = df['ageAtScan1_Years'], y = df_node['mc_0'], kind="reg")
@@ -382,7 +414,7 @@ f.plot_joint(plt.scatter, c = "k", s = 5, linewidth = 2, marker = ".", alpha = 0
 f.ax_joint.collections[0].set_alpha(0)
 
 
-# In[34]:
+# In[37]:
 
 
 df_node.isna().any().any()
@@ -390,7 +422,7 @@ df_node.isna().any().any()
 
 # ## Save out
 
-# In[35]:
+# In[38]:
 
 
 # Save out
