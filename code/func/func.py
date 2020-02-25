@@ -382,3 +382,42 @@ def perc_dev(Z, thr = 2.6, sign = 'abs'):
     
     return Z_perc
 
+
+def evd(Z, thr = 0.01, sign = 'abs'):
+    m = Z.shape
+    l = np.int(m[1] * thr) # assumes features are on dim 1, subjs on dim 0
+    
+    if sign == 'abs':
+        T = np.sort(np.abs(Z), axis = 1)[:,m[1] - l:m[1]]
+    elif sign == 'pos':
+        T = np.sort(Z, axis = 1)[:,m[1] - l:m[1]]
+    elif sign == 'neg':
+        T = np.sort(Z, axis = 1)[:,:l]
+
+    E = sp.stats.trim_mean(T, 0.1, axis = 1)
+    
+    return E
+
+
+def summarise_network(df_z, roi_loc, network_idx, metrics = ('ct', 'deg', 'ac', 'mc'), method = 'median'):
+
+    df_out = pd.DataFrame()
+    for metric in metrics:
+        if metric == 'ct':
+            if method == 'median': df_tmp = df_z.filter(regex = metric).groupby(network_idx[roi_loc == 1], axis = 1).median()
+            if method == 'mean': df_tmp = df_z.filter(regex = metric).groupby(network_idx[roi_loc == 1], axis = 1).mean()
+            if method == 'max': df_tmp = df_z.filter(regex = metric).groupby(network_idx[roi_loc == 1], axis = 1).max()
+            
+            my_list = [metric + '_' + str(i) for i in np.unique(network_idx[roi_loc == 1]).astype(int)]
+            df_tmp.columns = my_list
+        else:
+            if method == 'median': df_tmp = df_z.filter(regex = metric).groupby(network_idx, axis = 1).median()
+            if method == 'mean': df_tmp = df_z.filter(regex = metric).groupby(network_idx, axis = 1).mean()
+            if method == 'max': df_tmp = df_z.filter(regex = metric).groupby(network_idx, axis = 1).max()
+            
+            my_list = [metric + '_' + str(i) for i in np.unique(network_idx).astype(int)]
+            df_tmp.columns = my_list
+
+        df_out = pd.concat((df_out, df_tmp), axis = 1)
+
+    return df_out
