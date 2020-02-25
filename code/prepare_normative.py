@@ -159,26 +159,3 @@ np.savetxt(os.path.join(fwddir, 'synth_cov_test.txt'), synth_cov, delimiter = ' 
 cvdir = os.path.join(normativedir, 'cv/')
 if not os.path.exists(cvdir): os.mkdir(cvdir)
 
-
-# ### Permutation test | train and test | no blocks
-
-# In[14]:
-
-
-# # number of permutations
-# num_perms = 1000
-
-# # Set seed for reproducibility
-# np.random.seed(0)
-
-# for i in range(num_perms):
-#     permdir = os.path.join(normativedir, 'perm_all/perm_' + str(i))
-#     if not os.path.exists(permdir): os.makedirs(permdir)
-
-#     df_shuffed = df.copy()
-#     df_shuffed.loc[:,covs] = df_shuffed[covs].sample(frac = 1).values
-#     df_shuffed.loc[:,covs[1]] = df_shuffed.loc[:,covs[1]].astype(int)
-
-#     df_shuffed[df_shuffed[train_test_str] == 0].to_csv(os.path.join(permdir, 'cov_train.txt'), columns = covs, sep = ' ', index = False, header = False)
-#     df_shuffed[df_shuffed[train_test_str] == 1].to_csv(os.path.join(permdir, 'cov_test.txt'), columns = covs, sep = ' ', index = False, header = False)
-
