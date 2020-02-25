@@ -196,6 +196,7 @@ if any(subj_filt):
     A = A[:,:,~subj_filt]
     df = df.loc[~subj_filt]
     df_node = df_node.loc[~subj_filt]
+print(df_node.shape)
 
 
 # ### Check if any subjects have disconnected nodes in A matrix
@@ -210,9 +211,8 @@ subj_filt = np.zeros((df.shape[0],)).astype(bool)
 # In[18]:
 
 
-for (i, (index, row)) in enumerate(df.iterrows()):
-    if np.any(np.sum(A[:,:,0], axis = 1) == 0):
-        print(index)
+for i in range(A.shape[2]):
+    if np.any(np.sum(A[:,:,i], axis = 1) == 0):
         subj_filt[i] = True
 
 
@@ -222,9 +222,19 @@ for (i, (index, row)) in enumerate(df.iterrows()):
 np.sum(subj_filt)
 
 
+# In[20]:
+
+
+if any(subj_filt):
+    A = A[:,:,~subj_filt]
+    df = df.loc[~subj_filt]
+    df_node = df_node.loc[~subj_filt]
+print(df_node.shape)
+
+
 # ### Get streamline count and network density
 
-# In[20]:
+# In[21]:
 
 
 A_c = np.zeros((A.shape[2],))
@@ -233,26 +243,23 @@ for i in range(A.shape[2]):
     a = A[:,:,i]
     A_c[i] = np.sum(np.triu(a))
     A_d[i] = np.count_nonzero(np.triu(a))/((a.shape[0]**2-a.shape[0])/2)
-df['streamline_count'] = A_c
-df['network_density'] = A_d
+df.loc[:,'streamline_count'] = A_c
+df.loc[:,'network_density'] = A_d
 
 
 # ## Save out
 
-# In[21]:
+# In[22]:
 
 
 os.environ['MODELDIR']
 
 
-# In[22]:
+# In[23]:
 
 
 # Save out
 np.save(os.path.join(os.environ['MODELDIR'], 'A'), A)
 df_node.to_csv(os.path.join(os.environ['MODELDIR'], 'df_node_base.csv'))
 df.to_csv(os.path.join(os.environ['MODELDIR'], 'df_pheno.csv'))
-
-if any(subj_filt):
-    np.save(os.path.join(os.environ['MODELDIR'], 'subj_filt'), subj_filt)
 
