@@ -61,6 +61,8 @@ rest_qa = pd.read_csv(os.path.join(os.environ['DERIVSDIR'], 'pncDataFreeze201709
 demog = pd.read_csv(os.path.join(os.environ['DERIVSDIR'], 'pncDataFreeze20170905/n1601_dataFreeze/demographics/n1601_demographics_go1_20161212.csv'))
 # Brain volume
 brain_vol = pd.read_csv(os.path.join(os.environ['DERIVSDIR'], 'pncDataFreeze20170905/n1601_dataFreeze/neuroimaging/t1struct/n1601_ctVol20170412.csv'))
+# cnb
+cnb = pd.read_csv(os.path.join(os.environ['DERIVSDIR'], 'pncDataFreeze20170905/n1601_dataFreeze/cnb/n1601_cnb_factor_scores_tymoore_20151006.csv'))
 
 # GOASSESS Bifactor scores
 goassess = pd.read_csv('/Users/lindenmp/Dropbox/Work/ResData/PNC/GO1_clinical_factor_scores_psychosis_split_BIFACTOR.csv')
@@ -74,6 +76,7 @@ df = pd.merge(df, rest_qa, on=['scanid', 'bblid']) # rest_qa
 df = pd.merge(df, demog, on=['scanid', 'bblid']) # demog
 df = pd.merge(df, goassess, on=['bblid']) # goassess
 df = pd.merge(df, brain_vol, on=['scanid', 'bblid']) # brain_vol
+df = pd.merge(df, cnb, on=['scanid', 'bblid']) # brain_vol
 
 print(df.shape[0])
 df.set_index(['bblid', 'scanid'], inplace = True)
@@ -173,7 +176,19 @@ elif test_diff.size != 0:
 
 header = [train_test_str, 'ageAtScan1', 'ageAtScan1_Years','sex','race2','handednessv2',
           'dti64MeanAbsRMS','dti64MeanRelRMS','dti64MaxAbsRMS','dti64MaxRelRMS','mprage_antsCT_vol_TBV', 'averageManualRating',
-          'Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear']
+          'Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear',
+            'Overall_Efficiency', 'Overall_Accuracy',
+           'Overall_Speed', 'F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy',
+           'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
+           'F2_Memory.Efficiency', 'F3_Executive_Efficiency',
+           'F4_Social_Cognition_Efficiency', 'F1_Slow_Speed', 'F2_Fast_Speed',
+           'F3_Memory_Speed', 'Overall_Efficiency_Ar', 'Overall_Accuracy_Ar',
+           'Overall_Speed_Ar', 'F1_Exec_Comp_Cog_Accuracy_Ar',
+           'F2_Social_Cog_Accuracy_Ar', 'F3_Memory_Accuracy_Ar',
+           'F1_Social_Cognition_Efficiency_Ar',
+           'F2_Complex_Reasoning_Efficiency_Ar', 'F3_Memory_Efficiency_Ar',
+           'F4_Executive_Efficiency_Ar', 'F1_Slow_Speed_Ar', 'F2_Memory_Speed_Ar',
+           'F3_Fast_Speed_Ar']
 df.to_csv(os.path.join(os.environ['TRTEDIR'], 'df_pheno.csv'), columns = header)
 
 
