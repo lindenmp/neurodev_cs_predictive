@@ -8,7 +8,7 @@ import numpy as np
 
 def set_proj_env(dataset = 'PNC', train_test_str = 'squeakycleanExclude', exclude_str = 't1Exclude',
     parc_str = 'schaefer', parc_scale = 400, parc_variant = 'orig', edge_weight = 'streamlineCount',
-    primary_covariate = 'ageAtScan1_Years', extra_str = ''):
+    primary_covariate = 'ageAtScan1', extra_str = ''):
 
     # Project root directory
     projdir = '/Users/lindenmp/Dropbox/Work/ResProjects/NormativeNeuroDev_CrossSec_DWI'; os.environ['PROJDIR'] = projdir
@@ -18,11 +18,9 @@ def set_proj_env(dataset = 'PNC', train_test_str = 'squeakycleanExclude', exclud
 
     # Parcellation specifications
     # Names of parcels
-    if parc_str == 'lausanne': parcel_names = np.genfromtxt(os.path.join(projdir, 'figs_support/labels/lausanne_' + str(parc_scale) + '.txt'), dtype='str')
     if parc_str == 'schaefer': parcel_names = np.genfromtxt(os.path.join(projdir, 'figs_support/labels/schaefer' + str(parc_scale) + 'NodeNames.txt'), dtype='str')
 
     # vector describing whether rois belong to cortex (1) or subcortex (0)
-    if parc_str == 'lausanne': parcel_loc = np.loadtxt(os.path.join(projdir, 'figs_support/labels/lausanne_' + str(parc_scale) + '_loc.txt'), dtype='int')
     if parc_str == 'schaefer': parcel_loc = np.loadtxt(os.path.join(projdir, 'figs_support/labels/schaefer' + str(parc_scale) + 'NodeNames_loc.txt'), dtype='int')
     
     if parc_variant == 'no_bs':
@@ -35,18 +33,14 @@ def set_proj_env(dataset = 'PNC', train_test_str = 'squeakycleanExclude', exclud
         drop_parcels = []
         num_parcels = parcel_names.shape[0]
 
-    if parc_str == 'lausanne':
-        # Structural connectivity derivatives
-        scdir = os.path.join(derivsdir, 'processedData/diffusion/deterministic_dec2016', edge_weight, 'LausanneScale' + str(parc_scale)); os.environ['SCDIR'] = scdir
+    # Cortical thickness directory
+    ctdir = os.path.join(derivsdir, 'processedData/antsCorticalThickness'); os.environ['CTDIR'] = ctdir
+    voldir = os.path.join(derivsdir, 'processedData/gm_vol_masks_native'); os.environ['VOLDIR'] = voldir
 
-        # template file name for a subject's structural connectivity .mat file (sourced from Ted's group)
-        # this is a template because it requires some find and replacement -- see compute_node_metric.ipynb
-        sc_name_tmp = 'scanid_' + edge_weight + '_LausanneScale' + str(parc_scale) + '.mat'; os.environ['SC_NAME_TMP'] = sc_name_tmp
-        
-        # field inside .mat file to reference to get the A matrix
-        if edge_weight == 'streamlineCount': os.environ['CONN_STR'] = 'connectivity'
-        elif edge_weight == 'volNormStreamline': os.environ['CONN_STR'] = 'volNorm_connectivity'
-    elif parc_str == 'schaefer':
+    if parc_str == 'schaefer':
+        ct_name_tmp = 'bblid/*xscanid/ct_schaefer' + str(parc_scale) + '_17.txt'; os.environ['CT_NAME_TMP'] = ct_name_tmp
+        vol_name_tmp = 'bblid/*xscanid/Schaefer2018_' + str(parc_scale) + '_17Networks_native_gm.nii.gz'; os.environ['VOL_NAME_TMP'] = vol_name_tmp
+
         scdir = os.path.join(derivsdir, 'processedData/diffusion/deterministic_20171118'); os.environ['SCDIR'] = scdir
         sc_name_tmp = 'bblid/*xscanid/tractography/connectivity/bblid_*xscanid_SchaeferPNC_' + str(parc_scale) + '_dti_streamlineCount_connectivity.mat'; os.environ['SC_NAME_TMP'] = sc_name_tmp
 
@@ -73,7 +67,7 @@ def set_proj_env(dataset = 'PNC', train_test_str = 'squeakycleanExclude', exclud
         yeo_labels = ('Visual', 'Somatomator', 'Dorsal Attention', 'Ventral Attention', 'Limbic', 'Frontoparietal Control', 'Default Mode', 'Subcortical', 'Brainstem')
     elif parc_str == 'schaefer':
         yeo_idx = np.loadtxt(os.path.join(projdir, 'figs_support/labels/yeo17netlabelsSchaefer' + str(parc_scale) + '.txt')).astype(int)
-        yeo_labels = ('VisCent', 'VisPeri', 'SomMotA', 'SomMotB', 'DorsAttnA', 'DorsAttnB', 'SalVentAttnA', 'SalVentAttnB',
-                    'LimbicA', 'LimbicB', 'ContA', 'ContB', 'ContC', 'DefaultA', 'DefaultB', 'DefaultC', 'TempPar')
+        yeo_labels = ('Vis. A', 'Vis. B', 'Som. Mot. A', 'Som. Mot. B', 'Dors. Attn. A', 'Dors. Attn. B', 'Sal. Vent. Attn. A', 'Sal. Vent. Attn. B',
+                    'Limbic A', 'Limbic B', 'Cont. A', 'Cont. B', 'Cont. C', 'Default A', 'Default B', 'Default C', 'Temp. Par.')
 
     return parcel_names, parcel_loc, drop_parcels, num_parcels, yeo_idx, yeo_labels
