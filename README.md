@@ -3,8 +3,8 @@
 
 # Environment build
 
-    conda create -n NormativeNeuroDev_CrossSec_DWI python=3.7
-    conda activate NormativeNeuroDev_CrossSec_DWI
+    conda create -n neurodev_cs_predictive python=3.7
+    conda activate neurodev_cs_predictive
     # Essentials
     pip install jupyterlab ipython pandas numpy scipy seaborn matplotlib
     pip install jupyter_contrib_nbextensions && jupyter contrib nbextension install
@@ -12,7 +12,7 @@
 	pip install statsmodels sklearn tensorflow pingouin
 	# Extras
     pip install nibabel torch glob3
-    cd /Users/lindenmp/Dropbox/Work/ResProjects/NormativeNeuroDev_CrossSec_DWI
+    cd /Users/lindenmp/Dropbox/Work/ResProjects/neurodev_cs_predictive
     conda env export > environment.yml
 	pip freeze > requirements.txt
 
