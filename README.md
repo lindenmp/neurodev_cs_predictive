@@ -5,13 +5,14 @@
 
     conda create -n neurodev_cs_predictive python=3.7
     conda activate neurodev_cs_predictive
+
     # Essentials
-    pip install jupyterlab ipython pandas numpy scipy seaborn matplotlib
+    pip install jupyterlab ipython pandas numpy seaborn matplotlib nibabel glob3
     pip install jupyter_contrib_nbextensions && jupyter contrib nbextension install
+    
 	# Statistics
-	pip install statsmodels sklearn tensorflow pingouin
-	# Extras
-    pip install nibabel torch glob3
+	pip install scipy statsmodels sklearn pingouin
+
     cd /Users/lindenmp/Dropbox/Work/ResProjects/neurodev_cs_predictive
     conda env export > environment.yml
 	pip freeze > requirements.txt
