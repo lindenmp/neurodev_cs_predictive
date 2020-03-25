@@ -14,7 +14,7 @@ def set_proj_env(dataset = 'PNC', train_test_str = 'squeakycleanExclude', exclud
     projdir = '/Users/lindenmp/Dropbox/Work/ResProjects/NormativeNeuroDev_CrossSec_DWI'; os.environ['PROJDIR'] = projdir
     
     # Derivatives for dataset --> root directory for the dataset under analysis
-    derivsdir = os.path.join('/Users/lindenmp/Dropbox/Work/ResData/PNC/'); os.environ['DERIVSDIR'] = derivsdir
+    derivsdir = os.path.join('/Volumes/ResProjects_2TB/ResData/PNC/'); os.environ['DERIVSDIR'] = derivsdir
 
     # Parcellation specifications
     # Names of parcels
