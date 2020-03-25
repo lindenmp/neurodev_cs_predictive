@@ -216,157 +216,79 @@ def get_synth_cov(df, cov = 'ageAtScan1_Years', stp = 1):
     return X
 
 
-def run_corr(df_X, df_y, typ = 'spearmanr'):
-    df_corr = pd.DataFrame(index = df_y.columns, columns = ['coef', 'p'])
-    for i, row in df_corr.iterrows():
-        if typ == 'spearmanr':
-            df_corr.loc[i] = sp.stats.spearmanr(df_X, df_y[i])
-        elif typ == 'pearsonr':
-            df_corr.loc[i] = sp.stats.pearsonr(df_X, df_y[i])
-
-    return df_corr
-
-
-def get_fdr_p(p_vals):
-    out = multitest.multipletests(p_vals, alpha = 0.05, method = 'fdr_bh')
+def get_fdr_p(p_vals, alpha = 0.05):
+    out = multitest.multipletests(p_vals, alpha = alpha, method = 'fdr_bh')
     p_fdr = out[1] 
 
     return p_fdr
 
 
-def get_fdr_p_df(p_vals):
+def get_fdr_p_df(p_vals, alpha = 0.05):
     p_fdr = pd.DataFrame(index = p_vals.index,
                         columns = p_vals.columns,
-                        data = np.reshape(get_fdr_p(p_vals.values.flatten()), p_vals.shape))
+                        data = np.reshape(get_fdr_p(p_vals.values.flatten(), alpha = alpha), p_vals.shape))
 
     return p_fdr
 
 
+def compute_null(df, df_z, num_perms = 1000, method = 'pearson'):
+    np.random.seed(0)
+    null = np.zeros((num_perms,df_z.shape[1]))
+
+    for i in range(num_perms):
+        if i%10 == 0: update_progress(i/num_perms, df.name)
+        null[i,:] = df_z.reset_index(drop = True).corrwith(df.sample(frac = 1).reset_index(drop = True), method = method)
+    update_progress(1, df.name)   
+    
+    return null
+
+
 def get_null_p(coef, null):
 
-    num_perms = null.shape[1]
-    num_parcels = len(coef)
-    p_perm = np.zeros((num_parcels,))
+    num_perms = null.shape[0]
+    num_vars = len(coef)
+    p_perm = np.zeros((num_vars,))
 
-    for i in range(num_parcels):
+    for i in range(num_vars):
         r_obs = abs(coef[i])
-        r_perm = abs(null[i,:])
+        r_perm = abs(null[:,i])
         p_perm[i] = np.sum(r_perm >= r_obs) / num_perms
 
     return p_perm
 
 
-def get_sys_summary(coef, p_vals, idx, method = 'mean', alpha = 0.05, signed = True):
-    u_idx = np.unique(idx)
-    if signed == True:
-        sys_summary = np.zeros((len(u_idx),2))
-    else:
-        sys_summary = np.zeros((len(u_idx),1))
-        
-    for i in u_idx:
-        # filter regions by system idx
-        coef_tmp = coef[idx == i]
-        p_tmp = p_vals[idx == i]
-        
-        # threshold out non-sig coef
-        coef_tmp = coef_tmp[p_tmp < alpha]
-
-        # proportion of signed significant coefs within system i
-        if method == 'mean':
-            if signed == True:
-                if any(coef_tmp[coef_tmp > 0]): sys_summary[i-1,0] = np.mean(abs(coef_tmp[coef_tmp > 0]))
-                if any(coef_tmp[coef_tmp < 0]): sys_summary[i-1,1] = np.mean(abs(coef_tmp[coef_tmp < 0]))
-            else:
-                try:
-                    sys_summary[i-1,0] = np.mean(coef_tmp[coef_tmp != 0])
-                except:
-                    sys_summary[i-1,0] = 0
-                
-        elif method == 'median':
-            if signed == True:
-                if any(coef_tmp[coef_tmp > 0]): sys_summary[i-1,0] = np.median(abs(coef_tmp[coef_tmp > 0]))
-                if any(coef_tmp[coef_tmp < 0]): sys_summary[i-1,1] = np.median(abs(coef_tmp[coef_tmp < 0]))
-            else:
-                try:
-                    sys_summary[i-1,0] = np.median(coef_tmp[coef_tmp != 0])
-                except:
-                    sys_summary[i-1,0] = 0
-                    
-        elif method == 'max':
-            if signed == True:
-                if any(coef_tmp[coef_tmp > 0]): sys_summary[i-1,0] = np.max(abs(coef_tmp[coef_tmp > 0]))
-                if any(coef_tmp[coef_tmp < 0]): sys_summary[i-1,1] = np.max(abs(coef_tmp[coef_tmp < 0]))
-            else:
-                try:
-                    sys_summary[i-1,0] = np.max(coef_tmp[coef_tmp != 0])
-                except:
-                    sys_summary[i-1,0] = 0
-
-        if np.any(np.isnan(sys_summary)):
-            sys_summary[np.isnan(sys_summary)] = 0
-
-    return sys_summary
-
-
-def prop_bar_plot(sys_prop, sys_summary, labels = '', which_colors = 'yeo17', axlim = 'auto', title_str = '', fig_size = [4,4]):
-    f, ax = plt.subplots()
-    f.set_figwidth(fig_size[0])
-    f.set_figheight(fig_size[1])
-
-    y_pos = np.arange(1,sys_prop.shape[0]+1)
-
-    if which_colors == 'solid':
-        cmap = get_cmap(which_type = 'redblu_pair', num_classes = 2)
-        ax.barh(y_pos, sys_prop[:,0], color = cmap[0], edgecolor = 'k', align='center')
-        if sys_prop.shape[1] == 2:
-            ax.barh(y_pos, -sys_prop[:,1], color = cmap[1], edgecolor = 'k', align='center')
-        ax.axvline(linewidth = 1, color = 'k')
-    elif which_colors == 'opac_scaler':
-        cmap = get_cmap(which_type = 'redblu_pair', num_classes = 2)
-        for i in range(sys_prop.shape[0]):
-            ax.barh(y_pos[i], sys_prop[i,0], facecolor = np.append(cmap[0], sys_summary[i,0]), edgecolor = 'k', align='center')
-            if sys_prop.shape[1] == 2:
-                ax.barh(y_pos[i], -sys_prop[i,1], facecolor = np.append(cmap[1], sys_summary[i,1]), edgecolor = 'k', align='center')
-        ax.axvline(linewidth = 1, color = 'k')
-    else:
-        cmap = get_cmap(which_type = which_colors, num_classes = sys_prop.shape[0])
-        ax.barh(y_pos, sys_prop[:,0], color = cmap, edgecolor = 'k', align='center')
-        if sys_prop.shape[1] == 2:
-            ax.barh(y_pos, -sys_prop[:,1], color = cmap, edgecolor = 'k', align='center')
-        ax.axvline(linewidth = 1, color = 'k')
-
-    ax.set_yticks(y_pos)
-    ax.set_yticklabels(labels)        
-    ax.invert_yaxis() # labels read top-to-bottom
-
-    if axlim == 'auto':
-        anchors = np.array([0.2, 0.4, 0.6, 0.8, 1])
-        the_max = np.round(np.max(sys_prop),2)
-        ax_anchor = anchors[find_nearest_above(anchors, the_max)]
-        ax.set_xlim([-ax_anchor-ax_anchor*.05, ax_anchor+ax_anchor*.05])
-    else:
-        if axlim == 0.2:
-            ax.set_xticks(np.arange(-axlim, axlim+0.1, 0.1))
-        if axlim == 0.1:
-            ax.set_xticks(np.arange(-axlim, axlim+0.05, 0.05))
-        else:
-            ax.set_xlim([-axlim, axlim])
-
-    ax.xaxis.grid(True, which='major')
-
-    ax.xaxis.tick_top()
-    if sys_prop.shape[1] == 2:
-        ax.set_xticklabels([str(abs(np.round(x,2))) for x in ax.get_xticks()])
-    ax.set_title(title_str)
-
-    # Hide the right and top spines
-    ax.spines['left'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-
-    plt.show()
-
-    return f, ax
+def run_pheno_correlations(df_phenos, df_z, method = 'pearson', assign_p = 'permutation', nulldir = os.getcwd()):
+    df_out = pd.DataFrame(columns = ['pheno','variable','coef', 'p'])
+    phenos = df_phenos.columns
+    
+    for pheno in phenos:
+        df_tmp = pd.DataFrame(index = df_z.columns, columns = ['coef', 'p'])
+        if assign_p == 'permutation':
+            # Get true correlation
+            df_tmp.loc[:,'coef'] = df_z.corrwith(df_phenos.loc[:,pheno], method = method)
+            # Get null
+            if os.path.exists(os.path.join(nulldir,'null_' + pheno + '_' + method + '.npy')): # if null exists, load it
+                null = np.load(os.path.join(nulldir,'null_' + pheno + '_' + method + '.npy')) 
+            else: # otherwise, compute and save it out
+                null = compute_null(df_phenos.loc[:,pheno], df_z, num_perms = 1000, method = method)
+                np.save(os.path.join(nulldir,'null_' + pheno + '_' + method), null)
+            # Compute p-values using null
+            df_tmp.loc[:,'p'] = get_null_p(df_tmp.loc[:,'coef'].values, null)
+        elif assign_p == 'parametric':
+            if method == 'pearson':
+                for col in df_z.columns:
+                    df_tmp.loc[col,'coef'] = sp.stats.pearsonr(df_phenos.loc[:,pheno], df_z.loc[:,col])[0]
+                    df_tmp.loc[col,'p'] = sp.stats.pearsonr(df_phenos.loc[:,pheno], df_z.loc[:,col])[1]
+            if method == 'spearman':
+                for col in df_z.columns:
+                    df_tmp.loc[col,'coef'] = sp.stats.spearmanr(df_phenos.loc[:,pheno], df_z.loc[:,col])[0]
+                    df_tmp.loc[col,'p'] = sp.stats.spearmanr(df_phenos.loc[:,pheno], df_z.loc[:,col])[1]    
+        # append
+        df_tmp.reset_index(inplace = True); df_tmp.rename(index=str, columns={'index': 'variable'}, inplace = True); df_tmp['pheno'] = pheno
+        df_out = df_out.append(df_tmp, sort = False)
+    df_out.set_index(['pheno','variable'], inplace = True)
+    
+    return df_out
 
 
 def perc_dev(Z, thr = 2.6, sign = 'abs'):
@@ -399,25 +321,3 @@ def evd(Z, thr = 0.01, sign = 'abs'):
     return E
 
 
-def summarise_network(df_z, roi_loc, network_idx, metrics = ('ct', 'deg', 'ac', 'mc'), method = 'median'):
-
-    df_out = pd.DataFrame()
-    for metric in metrics:
-        if metric == 'ct':
-            if method == 'median': df_tmp = df_z.filter(regex = metric).groupby(network_idx[roi_loc == 1], axis = 1).median()
-            if method == 'mean': df_tmp = df_z.filter(regex = metric).groupby(network_idx[roi_loc == 1], axis = 1).mean()
-            if method == 'max': df_tmp = df_z.filter(regex = metric).groupby(network_idx[roi_loc == 1], axis = 1).max()
-            
-            my_list = [metric + '_' + str(i) for i in np.unique(network_idx[roi_loc == 1]).astype(int)]
-            df_tmp.columns = my_list
-        else:
-            if method == 'median': df_tmp = df_z.filter(regex = metric).groupby(network_idx, axis = 1).median()
-            if method == 'mean': df_tmp = df_z.filter(regex = metric).groupby(network_idx, axis = 1).mean()
-            if method == 'max': df_tmp = df_z.filter(regex = metric).groupby(network_idx, axis = 1).max()
-            
-            my_list = [metric + '_' + str(i) for i in np.unique(network_idx).astype(int)]
-            df_tmp.columns = my_list
-
-        df_out = pd.concat((df_out, df_tmp), axis = 1)
-
-    return df_out
