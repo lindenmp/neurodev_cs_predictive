@@ -11,7 +11,7 @@ def set_proj_env(dataset = 'PNC', train_test_str = 'squeakycleanExclude', exclud
     primary_covariate = 'ageAtScan1', extra_str = ''):
 
     # Project root directory
-    projdir = '/Users/lindenmp/Dropbox/Work/ResProjects/NormativeNeuroDev_CrossSec_DWI'; os.environ['PROJDIR'] = projdir
+    projdir = '/Users/lindenmp/Dropbox/Work/ResProjects/neurodev_cs_predictive'; os.environ['PROJDIR'] = projdir
     
     # Derivatives for dataset --> root directory for the dataset under analysis
     derivsdir = os.path.join('/Volumes/ResProjects_2TB/ResData/PNC/'); os.environ['DERIVSDIR'] = derivsdir
@@ -33,12 +33,8 @@ def set_proj_env(dataset = 'PNC', train_test_str = 'squeakycleanExclude', exclud
         drop_parcels = []
         num_parcels = parcel_names.shape[0]
 
-    # Cortical thickness directory
-    ctdir = os.path.join(derivsdir, 'processedData/antsCorticalThickness'); os.environ['CTDIR'] = ctdir
-    voldir = os.path.join(derivsdir, 'processedData/gm_vol_masks_native'); os.environ['VOLDIR'] = voldir
-
     if parc_str == 'schaefer':
-        ct_name_tmp = 'bblid/*xscanid/ct_schaefer' + str(parc_scale) + '_17.txt'; os.environ['CT_NAME_TMP'] = ct_name_tmp
+        voldir = os.path.join(derivsdir, 'processedData/gm_vol_masks_native'); os.environ['VOLDIR'] = voldir
         vol_name_tmp = 'bblid/*xscanid/Schaefer2018_' + str(parc_scale) + '_17Networks_native_gm.nii.gz'; os.environ['VOL_NAME_TMP'] = vol_name_tmp
 
         scdir = os.path.join(derivsdir, 'processedData/diffusion/deterministic_20171118'); os.environ['SCDIR'] = scdir
