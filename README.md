@@ -9,35 +9,13 @@
     # Essentials
     pip install jupyterlab ipython pandas numpy seaborn matplotlib nibabel glob3
     pip install jupyter_contrib_nbextensions && jupyter contrib nbextension install
-    
+
 	# Statistics
 	pip install scipy statsmodels sklearn pingouin
 
     cd /Users/lindenmp/Dropbox/Work/ResProjects/neurodev_cs_predictive
     conda env export > environment.yml
 	pip freeze > requirements.txt
-
-# Environment build (cluster)
-
-	# Make environment
-	module load python/3.7.3-system
-	cd /home/lindenmp/virtual_env
-	virtualenv NormativeNeuroDev_CrossSec_DWI
-	source /home/lindenmp/virtual_env/NormativeNeuroDev_CrossSec_DWI/bin/activate
-
-	# Essentials
-	pip install --upgrade pip
-	pip install ipython pandas scipy nibabel sklearn torch glob3
-
-	# Nispat
-	mkdir -p /scratch/kg98/Linden/ResProjects/NormativeNeuroDev_CrossSec_DWI/
-	cd /scratch/kg98/Linden/ResProjects/NormativeNeuroDev_CrossSec_DWI/
-	git clone https://github.com/lindenmp/nispat.git
-	cd /scratch/kg98/Linden/ResProjects/NormativeNeuroDev_CrossSec_DWI/nispat
-	python setup.py install
-
-	cd /scratch/kg98/Linden/ResProjects/NormativeNeuroDev_CrossSec_DWI/
-	pip freeze > requirements_m3.txt
 
 
 <!-- # Code
