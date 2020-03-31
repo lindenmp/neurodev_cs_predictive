@@ -8,7 +8,7 @@ import numpy as np
 
 def set_proj_env(dataset = 'PNC', train_test_str = 'squeakycleanExclude', exclude_str = 't1Exclude',
     parc_str = 'schaefer', parc_scale = 400, parc_variant = 'orig', edge_weight = 'streamlineCount',
-    primary_covariate = 'ageAtScan1', extra_str = ''):
+    primary_covariate = 'ageAtScan1_Years', extra_str = ''):
 
     # Project root directory
     projdir = '/Users/lindenmp/Dropbox/Work/ResProjects/neurodev_cs_predictive'; os.environ['PROJDIR'] = projdir
@@ -38,7 +38,7 @@ def set_proj_env(dataset = 'PNC', train_test_str = 'squeakycleanExclude', exclud
         vol_name_tmp = 'bblid/*xscanid/Schaefer2018_' + str(parc_scale) + '_17Networks_native_gm.nii.gz'; os.environ['VOL_NAME_TMP'] = vol_name_tmp
 
         scdir = os.path.join(derivsdir, 'processedData/diffusion/deterministic_20171118'); os.environ['SCDIR'] = scdir
-        sc_name_tmp = 'bblid/*xscanid/tractography/connectivity/bblid_*xscanid_SchaeferPNC_' + str(parc_scale) + '_dti_streamlineCount_connectivity.mat'; os.environ['SC_NAME_TMP'] = sc_name_tmp
+        sc_name_tmp = 'bblid/*xscanid/tractography/connectivity/bblid_*xscanid_SchaeferPNC_' + str(parc_scale) + '_dti_' + edge_weight + '_connectivity.mat'; os.environ['SC_NAME_TMP'] = sc_name_tmp
 
         os.environ['CONN_STR'] = 'connectivity'
 
