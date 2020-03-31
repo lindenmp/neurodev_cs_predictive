@@ -3,19 +3,29 @@
 # Linden Parkes, 2019
 # lindenmp@seas.upenn.edu
 
-from IPython.display import clear_output
-
-import numpy as np
-import scipy as sp
+# Essentials
+import os, sys, glob
 import pandas as pd
+import numpy as np
+import nibabel as nib
 
+# Stats
+import scipy as sp
+from scipy import stats
+import statsmodels.api as sm
+import pingouin as pg
+
+# Plotting
+import seaborn as sns
+import matplotlib.pyplot as plt
+plt.rcParams['svg.fonttype'] = 'none'
+
+from IPython.display import clear_output
+from scipy.stats import t
 from numpy.matlib import repmat 
 from scipy.linalg import svd, schur
-from scipy import stats
-
 from statsmodels.stats import multitest
 
-import matplotlib.pyplot as plt
 
 def get_cmap(which_type = 'qual1', num_classes = 8):
     # Returns a nice set of colors to make a nice colormap using the color schemes
@@ -320,4 +330,26 @@ def evd(Z, thr = 0.01, sign = 'abs'):
     
     return E
 
+
+def consistency_thresh(A, thresh = 0.5):
+
+    num_subs = A.shape[2]
+    num_parcels = A.shape[0]
+
+     # binarize A matrices
+    A_bin = A.copy();
+    A_bin[A_bin > 0] = 1
+
+    # Proportion of subjects with a non-zero edge
+    A_bin_prop = np.divide(np.sum(A_bin, axis = 2), num_subs)
+
+    # generate binary 'network mask' of edges to retain
+    A_mask = A_bin_prop.copy()
+    A_mask[A_mask < thresh] = 0
+    A_mask[A_mask != 0] = 1
+    
+    A_mask_tmp = np.repeat(A_mask[:, :, np.newaxis], num_subs, axis = 2)
+    A_out = np.multiply(A, A_mask_tmp)
+    
+    return A_out, A_mask
 
