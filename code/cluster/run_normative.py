@@ -7,12 +7,12 @@ from nispat.normative_parallel import execute_nm, collect_nm, delete_nm
 # parallel (batch)
 # ------------------------------------------------------------------------------
 # settings and paths
-python_path = '/home/lindenmp/virtual_env/nispat/bin/python'
-normative_path = '/home/lindenmp/virtual_env/nispat/nispat/nispat/normative.py'
-batch_size = 16
+python_path = '/cbica/home/parkesl/miniconda3/envs/nispat/bin/python'
+normative_path = '/cbica/home/parkesl/miniconda3/envs/nispat/nispat/nispat/normative.py'
+batch_size = 4
 memory = '2G'
 duration = '2:00:00'
-cluster_spec = 'm3'
+cluster_spec = 'cubica' # 'm3' 'cubica'
 
 # ------------------------------------------------------------------------------
 # Normative dir
@@ -22,7 +22,7 @@ train_test_str = 'squeakycleanExclude'
 exclude_str = 't1Exclude'
 combo_label = 'schaefer_200_streamlineCount_consist'
 
-normativedir = os.path.join('/scratch/kg98/lindenmp/ResProjects/neurodev_cs_predictive/analysis/normative',
+normativedir = os.path.join('/cbica/home/parkesl/ResProjects/neurodev_cs_predictive/analysis_cubic_test/normative',
 	exclude_str, train_test_str, combo_label, 'ageAtScan1_Years+sex_adj/')
 print(normativedir)
 
