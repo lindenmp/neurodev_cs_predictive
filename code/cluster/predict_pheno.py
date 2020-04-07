@@ -28,6 +28,7 @@ parser.add_argument("-metric", help="brain feature (e.g., ac)", dest="metric", d
 parser.add_argument("-pheno", help="psychopathology dimension", dest="pheno", default=None)
 parser.add_argument("-seed", help="seed for shuffle_data", dest="seed", default=None)
 parser.add_argument("-alg", help="estimator", dest="alg", default=None)
+parser.add_argument("-score", help="score set order", dest="score", default=None)
 parser.add_argument("-o", help="output directory", dest="outroot", default=None)
 
 args = parser.parse_args()
@@ -36,8 +37,10 @@ X_file = args.X_file
 y_file = args.y_file
 metric = args.metric
 pheno = args.pheno
-seed = int(args.seed)
+# seed = int(args.seed)
+seed = int(os.environ['SGE_TASK_ID'])-1
 alg = args.alg
+score = args.score
 outroot = args.outroot
 # --------------------------------------------------------------------------------------------------------------------
 
@@ -124,18 +127,25 @@ X = X.filter(regex = metric)
 y = pd.read_csv(y_file)
 y.set_index(['bblid', 'scanid'], inplace = True)
 y = y.loc[:,pheno]
-# --------------------------------------------------------------------------------------------------------------------
 
-# --------------------------------------------------------------------------------------------------------------------
 # outdir
-outdir = os.path.join(outroot, 'split_' + str(seed), alg + '_' + metric + '_' + pheno)
+outdir = os.path.join(outroot, 'main_score_' + score, 'split_' + str(seed), alg + '_' + metric + '_' + pheno)
 if not os.path.exists(outdir): os.makedirs(outdir);
 # --------------------------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------------------------
+# set scorer
+if score == 'r2':
+    # use R2 as main metric
+    scoring = {'r2': 'r2', 'mse': 'neg_mean_squared_error', 'mae': 'neg_mean_absolute_error', 'corr': my_scorer}
+elif score == 'corr':
+    # use corr as main metric
+    scoring = {'corr': my_scorer, 'r2': 'r2', 'mse': 'neg_mean_squared_error', 'mae': 'neg_mean_absolute_error'}
+elif score == 'mse':
+    # use mse as main metric
+    scoring = {'mse': 'neg_mean_squared_error', 'r2': 'r2', 'mae': 'neg_mean_absolute_error', 'corr': my_scorer}
+
 # prediction
-scoring = {'r2': 'r2', 'mse': 'neg_mean_squared_error', 'mae': 'neg_mean_absolute_error', 'corr': my_scorer}
-# scoring = {'corr': my_scorer, 'r2': 'r2', 'mse': 'neg_mean_squared_error', 'mae': 'neg_mean_absolute_error'}
 best_params, best_scores, nested_score = reg_ncv_wrapper(X = X, y = y, alg = alg, seed = seed, scoring = scoring)
 
 # --------------------------------------------------------------------------------------------------------------------
