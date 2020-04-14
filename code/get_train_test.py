@@ -6,20 +6,30 @@
 # In[1]:
 
 
-import os, sys
-import numpy as np
+# Essentials
+import os, sys, glob
 import pandas as pd
+import numpy as np
+import nibabel as nib
+
+# Stats
+import scipy as sp
+from scipy import stats
+import statsmodels.api as sm
+import pingouin as pg
+
+# Plotting
 import seaborn as sns
 import matplotlib.pyplot as plt
 plt.rcParams['svg.fonttype'] = 'none'
-import statsmodels.api as sm
 
 
 # In[2]:
 
 
-sys.path.append('/Users/lindenmp/Dropbox/Work/ResProjects/NormativeNeuroDev_CrossSec_DWI/code/func/')
+sys.path.append('/Users/lindenmp/Dropbox/Work/ResProjects/neurodev_cs_predictive/code/func/')
 from proj_environment import set_proj_env
+sys.path.append('/Users/lindenmp/Dropbox/Work/git/pyfunc/')
 from func import get_cmap
 
 
@@ -28,9 +38,7 @@ from func import get_cmap
 
 train_test_str = 'squeakycleanExclude'
 exclude_str = 't1Exclude'
-parc_str = 'schaefer'
-parc_scale = 200
-_ = set_proj_env(train_test_str = train_test_str, exclude_str = exclude_str, parc_str = parc_str, parc_scale = parc_scale)
+_ = set_proj_env(exclude_str = exclude_str, train_test_str = train_test_str)
 
 
 # ### Setup output directory
@@ -61,11 +69,11 @@ rest_qa = pd.read_csv(os.path.join(os.environ['DERIVSDIR'], 'pncDataFreeze201709
 demog = pd.read_csv(os.path.join(os.environ['DERIVSDIR'], 'pncDataFreeze20170905/n1601_dataFreeze/demographics/n1601_demographics_go1_20161212.csv'))
 # Brain volume
 brain_vol = pd.read_csv(os.path.join(os.environ['DERIVSDIR'], 'pncDataFreeze20170905/n1601_dataFreeze/neuroimaging/t1struct/n1601_ctVol20170412.csv'))
-# cnb
-cnb = pd.read_csv(os.path.join(os.environ['DERIVSDIR'], 'pncDataFreeze20170905/n1601_dataFreeze/cnb/n1601_cnb_factor_scores_tymoore_20151006.csv'))
 
 # GOASSESS Bifactor scores
-goassess = pd.read_csv('/Users/lindenmp/Dropbox/Work/ResData/PNC/GO1_clinical_factor_scores_psychosis_split_BIFACTOR.csv')
+goassess = pd.read_csv(os.path.join(os.environ['DERIVSDIR'], 'GO1_clinical_factor_scores_psychosis_split_BIFACTOR.csv'))
+# cnb
+cnb = pd.read_csv(os.path.join(os.environ['DERIVSDIR'], 'pncDataFreeze20170905/n1601_dataFreeze/cnb/n1601_cnb_factor_scores_tymoore_20151006.csv'))
 
 # merge
 df = health
@@ -74,8 +82,9 @@ df = pd.merge(df, t1_qa, on=['scanid', 'bblid']) # t1_qa
 df = pd.merge(df, dti_qa, on=['scanid', 'bblid']) # dti_qa
 df = pd.merge(df, rest_qa, on=['scanid', 'bblid']) # rest_qa
 df = pd.merge(df, demog, on=['scanid', 'bblid']) # demog
-df = pd.merge(df, goassess, on=['bblid']) # goassess
 df = pd.merge(df, brain_vol, on=['scanid', 'bblid']) # brain_vol
+
+df = pd.merge(df, goassess, on=['bblid']) # goassess
 df = pd.merge(df, cnb, on=['scanid', 'bblid']) # brain_vol
 
 print(df.shape[0])
