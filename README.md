@@ -24,6 +24,21 @@
     conda env export > environment.yml
 	pip freeze > requirements.txt
 
+# Environment build (cubic, home)
+
+    conda create -n neurodev_cs_predictive python=3.7
+    conda activate neurodev_cs_predictive
+
+    # Essentials
+    pip install ipython pandas numpy glob3
+
+	# Statistics
+	pip install scipy statsmodels sklearn pingouin
+
+	cd /cbica/home/parkesl/miniconda3/envs/neurodev_cs_predictive/
+    conda env export > environment.yml
+	pip freeze > requirements.txt
+
 
 <!-- # Code
 
