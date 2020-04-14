@@ -3,7 +3,7 @@
 
 # # Preamble
 
-# In[ ]:
+# In[1]:
 
 
 # Essentials
@@ -30,7 +30,8 @@ plt.rcParams['svg.fonttype'] = 'none'
 
 sys.path.append('/Users/lindenmp/Dropbox/Work/ResProjects/neurodev_cs_predictive/code/func/')
 from proj_environment import set_proj_env
-from func import node_strength, ave_control, modal_control
+sys.path.append('/Users/lindenmp/Dropbox/Work/git/pyfunc/')
+from func import node_strength, ave_control, modal_control, consistency_thresh
 
 
 # In[3]:
@@ -38,7 +39,13 @@ from func import node_strength, ave_control, modal_control
 
 train_test_str = 'squeakycleanExclude'
 exclude_str = 't1Exclude'
-parcel_names, parcel_loc, drop_parcels, num_parcels, yeo_idx, yeo_labels = set_proj_env(exclude_str = exclude_str, train_test_str = train_test_str)
+extra_str = '_consist' # '_vol_norm' '_noboxcox'
+edge_weight = 'streamlineCount' # 'streamlineCount' 'fa' 'mean_streamlineLength' 'adc'
+parc_scale = 200
+primary_covariate = 'ageAtScan1_Years'
+parcel_names, parcel_loc, drop_parcels, num_parcels, yeo_idx, yeo_labels = set_proj_env(exclude_str = exclude_str, train_test_str = train_test_str,
+                                                                                        parc_scale = parc_scale, primary_covariate = primary_covariate,
+                                                                                       extra_str = extra_str, edge_weight = edge_weight)
 
 
 # ### Setup output directory
@@ -50,15 +57,24 @@ print(os.environ['MODELDIR'])
 if not os.path.exists(os.environ['MODELDIR']): os.makedirs(os.environ['MODELDIR'])
 
 
-# ## Load train/test .csv and setup node .csv
+# ### Data processing options
 
 # In[5]:
+
+
+threshold = True
+vol_norm = False
+
+
+# ## Load train/test .csv and setup node .csv
+
+# In[6]:
 
 
 os.path.join(os.environ['TRTEDIR'])
 
 
-# In[6]:
+# In[7]:
 
 
 # Load data
@@ -67,15 +83,15 @@ df.set_index(['bblid', 'scanid'], inplace = True)
 print(df.shape)
 
 
-# In[7]:
-
-
-# # Missing data file for this subject only for schaefer 200
-# if parc_str == 'schaefer' and parc_scale == 200:
-#     df.drop(labels = (112598, 5161), inplace=True)
-
-
 # In[8]:
+
+
+# Missing data file for this subject only for schaefer 200
+if parc_scale == 200:
+    df.drop(labels = (112598, 5161), inplace=True)
+
+
+# In[9]:
 
 
 # output dataframe
@@ -92,14 +108,14 @@ print(df_node.shape)
 
 # ## Load in cortical volume
 
-# In[9]:
+# In[10]:
 
 
 # subject filter
 subj_filt = np.zeros((df.shape[0],)).astype(bool)
 
 
-# In[10]:
+# In[11]:
 
 
 VOL = np.zeros((df.shape[0], num_parcels))
@@ -126,13 +142,13 @@ for (i, (index, row)) in enumerate(df.iterrows()):
 df_node.loc[:,vol_labels] = VOL
 
 
-# In[11]:
+# In[12]:
 
 
 np.sum(subj_filt)
 
 
-# In[12]:
+# In[13]:
 
 
 if any(subj_filt):
@@ -142,14 +158,14 @@ if any(subj_filt):
 
 # ## Load in structural connectivity matrices
 
-# In[13]:
+# In[14]:
 
 
 # subject filter
 subj_filt = np.zeros((df.shape[0],)).astype(bool)
 
 
-# In[14]:
+# In[15]:
 
 
 A = np.zeros((num_parcels, num_parcels, df.shape[0]))
@@ -168,13 +184,13 @@ for (i, (index, row)) in enumerate(df.iterrows()):
         A[:,:,i] = np.full((num_parcels, num_parcels), np.nan)
 
 
-# In[15]:
+# In[16]:
 
 
 np.sum(subj_filt)
 
 
-# In[16]:
+# In[17]:
 
 
 if any(subj_filt):
@@ -184,34 +200,53 @@ if any(subj_filt):
 print(df_node.shape)
 
 
+# ### Consistency thresholding
+
+# In[18]:
+
+
+if threshold:
+    A_out, A_mask = consistency_thresh(A, thresh = 0.6)
+    sns.heatmap(A_mask)
+else:
+    print('skipping..')
+    A_out = A.copy()
+
+
+# In[19]:
+
+
+np.all(np.sum(A_mask[:,:], axis = 1) > 0)
+
+
 # ### Check if any subjects have disconnected nodes in A matrix
 
-# In[17]:
+# In[20]:
 
 
 # subject filter
 subj_filt = np.zeros((df.shape[0],)).astype(bool)
 
 
-# In[18]:
+# In[21]:
 
 
-for i in range(A.shape[2]):
-    if np.any(np.sum(A[:,:,i], axis = 1) == 0):
+for i in range(A_out.shape[2]):
+    if np.any(np.sum(A_out[:,:,i], axis = 1) == 0):
         subj_filt[i] = True
 
 
-# In[19]:
+# In[22]:
 
 
 np.sum(subj_filt)
 
 
-# In[20]:
+# In[23]:
 
 
 if any(subj_filt):
-    A = A[:,:,~subj_filt]
+    A_out = A_out[:,:,~subj_filt]
     df = df.loc[~subj_filt]
     df_node = df_node.loc[~subj_filt]
 print(df_node.shape)
@@ -219,42 +254,42 @@ print(df_node.shape)
 
 # ### Get streamline count and network density
 
-# In[21]:
+# In[24]:
 
 
-A_c = np.zeros((A.shape[2],))
-A_d = np.zeros((A.shape[2],))
-for i in range(A.shape[2]):
-    A_c[i] = np.sum(np.triu(A[:,:,i]))
-    A_d[i] = np.count_nonzero(np.triu(A[:,:,i]))/((A[:,:,i].shape[0]**2-A[:,:,i].shape[0])/2)
+A_c = np.zeros((A_out.shape[2],))
+A_d = np.zeros((A_out.shape[2],))
+for i in range(A_out.shape[2]):
+    A_c[i] = np.sum(np.triu(A_out[:,:,i]))
+    A_d[i] = np.count_nonzero(np.triu(A_out[:,:,i]))/((A_out[:,:,i].shape[0]**2-A_out[:,:,i].shape[0])/2)
 df.loc[:,'streamline_count'] = A_c
 df.loc[:,'network_density'] = A_d
 
 
 # ### Normalize A by regional volume
 
-# In[22]:
+# In[25]:
 
 
-vol_ref = os.path.join(os.environ['DERIVSDIR'], 'Schaefer2018_400_17Networks_PNC_2mm.nii.gz'))
-img = nib.load(vol_ref)
-v = np.array(img.dataobj)
-v = v[v != 0]
-unique_elements, counts_elements = np.unique(v, return_counts=True)
+if vol_norm:
+    vol_ref = os.path.join(os.environ['DERIVSDIR'], 'Schaefer2018_'+str(parc_scale)+'_17Networks_PNC_2mm.nii.gz')
+    print(vol_ref)
+    img = nib.load(vol_ref)
+    v = np.array(img.dataobj)
+    v = v[v != 0]
+    unique_elements, counts_elements = np.unique(v, return_counts=True)
 
-
-# In[23]:
-
-
-for i in range(num_parcels):
-    for j in range(num_parcels):
-        denom = counts_elements[i] + counts_elements[j]
-        A[i,j,:] = A[i,j,:]/denom
+    for i in range(num_parcels):
+        for j in range(num_parcels):
+            denom = counts_elements[i] + counts_elements[j]
+            A_out[i,j,:] = A_out[i,j,:]/denom
+else:
+    print('skipping..')
 
 
 # ### Compute node metrics
 
-# In[24]:
+# In[26]:
 
 
 # fc stored as 3d matrix, subjects of 3rd dim
@@ -263,9 +298,9 @@ AC = np.zeros((df.shape[0], num_parcels))
 MC = np.zeros((df.shape[0], num_parcels))
 
 for (i, (index, row)) in enumerate(df.iterrows()):
-    S[i,:] = node_strength(A[:,:,i])
-    AC[i,:] = ave_control(A[:,:,i])
-    MC[i,:] = modal_control(A[:,:,i])
+    S[i,:] = node_strength(A_out[:,:,i])
+    AC[i,:] = ave_control(A_out[:,:,i])
+    MC[i,:] = modal_control(A_out[:,:,i])
 
 df_node.loc[:,str_labels] = S
 df_node.loc[:,ac_labels] = AC
@@ -274,17 +309,24 @@ df_node.loc[:,mc_labels] = MC
 
 # ## Save out
 
-# In[25]:
+# In[27]:
+
+
+df_node.isna().any().any()
+
+
+# In[28]:
 
 
 os.environ['MODELDIR']
 
 
-# In[26]:
+# In[29]:
 
 
 # Save out
 np.save(os.path.join(os.environ['MODELDIR'], 'A'), A)
+np.save(os.path.join(os.environ['MODELDIR'], 'A_out'), A_out)
 df_node.to_csv(os.path.join(os.environ['MODELDIR'], 'df_node_base.csv'))
 df.to_csv(os.path.join(os.environ['MODELDIR'], 'df_pheno.csv'))
 
