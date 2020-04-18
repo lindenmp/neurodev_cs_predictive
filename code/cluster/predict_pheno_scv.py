@@ -27,7 +27,7 @@ parser.add_argument("-x", help="IVs", dest="X_file", default=None)
 parser.add_argument("-y", help="DVs", dest="y_file", default=None)
 parser.add_argument("-metric", help="brain feature (e.g., ac)", dest="metric", default=None)
 parser.add_argument("-pheno", help="psychopathology dimension", dest="pheno", default=None)
-parser.add_argument("-seed", help="seed for shuffle_data", dest="seed", default=None)
+parser.add_argument("-seed", help="seed for shuffle_data", dest="seed", default=1)
 parser.add_argument("-alg", help="estimator", dest="alg", default=None)
 parser.add_argument("-score", help="score set order", dest="score", default=None)
 parser.add_argument("-o", help="output directory", dest="outroot", default=None)
@@ -39,7 +39,7 @@ y_file = args.y_file
 metric = args.metric
 pheno = args.pheno
 # seed = int(args.seed)
-seed = int(os.environ['SGE_TASK_ID'])-1
+# seed = int(os.environ['SGE_TASK_ID'])-1
 alg = args.alg
 score = args.score
 outroot = args.outroot
@@ -55,8 +55,8 @@ my_scorer = make_scorer(corr_pred_true, greater_is_better = True)
 
 
 def get_reg(num_params = 10):
-    regs = {'rr': Ridge(),
-            'lr': Lasso(),
+    regs = {'rr': Ridge(max_iter = 100000),
+            'lr': Lasso(max_iter = 100000),
             'krr_lin': KernelRidge(kernel='linear'),
             'krr_rbf': KernelRidge(kernel='rbf'),
             # 'svr_lin': LinearSVR(max_iter=100000),
@@ -97,7 +97,7 @@ def get_stratified_cv(X, y, n_splits = 10):
     return X_sort, y_sort, my_cv
 
 
-def run_reg_scv(X, y, reg, param_grid, n_splits = 10, scoring = 'r2'):
+def run_reg_scv(X, y, reg, param_grid, n_splits = 10, scoring = 'r2', run_perm = False):
     
     pipe = Pipeline(steps=[('standardize', StandardScaler()),
                            ('reg', reg)])
@@ -109,8 +109,33 @@ def run_reg_scv(X, y, reg, param_grid, n_splits = 10, scoring = 'r2'):
     else: grid = GridSearchCV(pipe, param_grid, cv = my_cv, scoring = scoring)
     
     grid.fit(X_sort, y_sort);
-    
-    return grid
+
+    if run_perm:
+        y_sort.reset_index(drop = True, inplace = True)
+
+        null_reg = copy.deepcopy(reg)
+        if 'reg__alpha' in grid.best_params_: null_reg.alpha = grid.best_params_['reg__alpha']
+        if 'reg__gamma' in grid.best_params_: null_reg.gamma = grid.best_params_['reg__gamma']
+        if 'reg__C' in grid.best_params_: null_reg.C = grid.best_params_['reg__C']
+
+        pipe = Pipeline(steps=[('standardize', StandardScaler()),
+                               ('reg', null_reg)])
+
+        n_perm = 5000
+        permuted_acc = np.zeros((n_perm,))
+
+        for i in np.arange(n_perm):
+
+            np.random.seed(i)
+            X_perm = X_sort.sample(frac = 1)
+            X_perm.reset_index(inplace = True)
+            
+            permuted_acc[i] = cross_val_score(pipe, X_perm, y_sort, scoring = my_scorer, cv = my_cv).mean()
+
+    if run_perm:
+        return grid, permuted_acc
+    else:
+        return grid
 
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -126,47 +151,34 @@ y.set_index(['bblid', 'scanid'], inplace = True)
 y = y.loc[:,pheno]
 
 # outdir
-outdir = os.path.join(outroot, 'main_score_' + score, alg + '_' + metric + '_' + pheno)
+outdir = os.path.join(outroot, score, alg + '_' + metric + '_' + pheno)
 if not os.path.exists(outdir): os.makedirs(outdir);
 # --------------------------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------------------------
 # set scorer
 if score == 'r2':
-    # use R2 as main metric
-    scoring = {'r2': 'r2', 'mse': 'neg_mean_squared_error', 'mae': 'neg_mean_absolute_error', 'corr': my_scorer}
+    my_scorer = make_scorer(r2_score, greater_is_better = True)
 elif score == 'corr':
-    # use corr as main metric
-    scoring = {'corr': my_scorer, 'r2': 'r2', 'mse': 'neg_mean_squared_error', 'mae': 'neg_mean_absolute_error'}
+    my_scorer = make_scorer(corr_pred_true, greater_is_better = True)
 elif score == 'mse':
-    # use mse as main metric
-    scoring = {'mse': 'neg_mean_squared_error', 'r2': 'r2', 'mae': 'neg_mean_absolute_error', 'corr': my_scorer}
+    my_scorer = make_scorer(mean_squared_error, greater_is_better = False)
 
 # prediction
 regs, param_grids = get_reg()
 
-grid = run_reg_scv(X = X, y = y, reg = regs[alg], param_grid = param_grids[alg], scoring = scoring)
-
-best_params = grid.best_params_
-if type(scoring) == dict:
-    best_scores = dict()
-    for key in scoring.keys():
-        best_scores[key] = grid.cv_results_['mean_test_'+key][grid.best_index_]
-else:
-    best_scores = grid.best_score_
+grid, permuted_acc = run_reg_scv(X = X, y = y, reg = regs[alg], param_grid = param_grids[alg], scoring = my_scorer, run_perm = True)
 # --------------------------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------------------------
 # outputs
-json_data = json.dumps(best_params)
+json_data = json.dumps(grid.best_params_)
 f = open(os.path.join(outdir,'best_params.json'),'w')
 f.write(json_data)
 f.close()
 
-json_data = json.dumps(best_scores)
-f = open(os.path.join(outdir,'best_scores.json'),'w')
-f.write(json_data)
-f.close()
+np.savetxt(os.path.join(outdir,'best_score.txt'), np.array([grid.best_score_]))
+np.savetxt(os.path.join(outdir,'permuted_acc.txt'), permuted_acc)
 
 # --------------------------------------------------------------------------------------------------------------------
 
