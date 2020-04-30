@@ -30,15 +30,14 @@ plt.rcParams['svg.fonttype'] = 'none'
 sys.path.append('/Users/lindenmp/Dropbox/Work/ResProjects/neurodev_cs_predictive/code/func/')
 from proj_environment import set_proj_env
 sys.path.append('/Users/lindenmp/Dropbox/Work/git/pyfunc/')
-from func import get_cmap
+from func import my_get_cmap
 
 
 # In[3]:
 
 
-train_test_str = 'squeakycleanExclude'
 exclude_str = 't1Exclude'
-_ = set_proj_env(exclude_str = exclude_str, train_test_str = train_test_str)
+_ = set_proj_env(exclude_str = exclude_str)
 
 
 # ### Setup output directory
@@ -129,25 +128,19 @@ df['dti64QAManualScore'].unique()
 np.sum(df['dti64QAManualScore'] == 2)
 
 
-# # Define train/test split
+# # Randomly sample subset for nuisance regression
 
 # In[10]:
 
 
-if train_test_str == 'squeakycleanExclude':
-    # 1) Use squeakycleanExclude
-    # For PNC, the train/test split is based upon the 'squeakycleanExclude' criteria. From the wiki:
-    # "This category excludes all subjects with any screening diagnosis as found by the GOASSESS clinical screening instrument.
-    # Note that this is NOT a commonly used criteria except for sensitivity analysis, and in general we would prefer to not
-    # have studies use this without a strong rationale; would discuss with your BBL liaison."
-    # train = squeakycleanExclude == 0 --> retain those WITHOUT any lifetime psychopathology 
-    # test = squeakycleanExclude == 1 --> retain those WITH lifetime psychopathology
-    print('Train: ', np.sum(df[train_test_str] == 0), 'Test:', np.sum(df[train_test_str] == 1))
+df.loc[:,'nuisance_sample'] = 0
+np.random.seed(0)
+my_idx = df.sample(frac = 0.1).index
+df.loc[my_idx,'nuisance_sample'] = 1
+print('Main sample: ', np.sum(df['nuisance_sample'] == 0), 'Nuisance sample:', np.sum(df['nuisance_sample'] == 1))
 
 
-# # Characterise train/test split
-
-# ## Train/Test split
+# # Characterise dataset
 
 # In[11]:
 
@@ -164,18 +157,18 @@ age_unique = np.unique(df.ageAtScan1_Years)
 print('There are', age_unique.shape[0], 'unique age points')
 
 # Check if train and test represent the full unique age space
-train_diff = np.setdiff1d(df[df[train_test_str] == 0].ageAtScan1_Years,age_unique)
-test_diff = np.setdiff1d(df[df[train_test_str] == 1].ageAtScan1_Years,age_unique)
+train_diff = np.setdiff1d(df[df['nuisance_sample'] == 0].ageAtScan1_Years,age_unique)
+test_diff = np.setdiff1d(df[df['nuisance_sample'] == 1].ageAtScan1_Years,age_unique)
 
 if train_diff.size == 0:
-    print('All unique age points are represented in the training set')
+    print('All unique age points are represented in the main set')
 elif train_diff.size != 0:
-    print('All unique age points ARE NOT represented in the training set')
+    print('All unique age points ARE NOT represented in the main set')
     
 if test_diff.size == 0:
-    print('All unique age points are represented in the testing set')
+    print('All unique age points are represented in the nuisance set')
 elif test_diff.size != 0:
-    print('All unique age points ARE NOT represented in the testing set')
+    print('All unique age points ARE NOT represented in the nuisance set')
 
 
 # ## Export
@@ -183,7 +176,7 @@ elif test_diff.size != 0:
 # In[13]:
 
 
-header = [train_test_str, 'ageAtScan1', 'ageAtScan1_Years','sex','race2','handednessv2',
+header = ['nuisance_sample', 'ageAtScan1', 'ageAtScan1_Years','sex','race2','handednessv2',
           'dti64MeanAbsRMS','dti64MeanRelRMS','dti64MaxAbsRMS','dti64MaxRelRMS','mprage_antsCT_vol_TBV', 'averageManualRating',
           'Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear',
             'Overall_Efficiency', 'Overall_Accuracy',
@@ -209,7 +202,7 @@ df.to_csv(os.path.join(os.environ['TRTEDIR'], 'df_pheno.csv'), columns = header)
 if not os.path.exists(os.environ['FIGDIR']): os.makedirs(os.environ['FIGDIR'])
 os.chdir(os.environ['FIGDIR'])
 sns.set(style='white', context = 'paper', font_scale = 1)
-cmap = get_cmap('pair')
+cmap = my_get_cmap('pair')
 
 labels = ['Train', 'Test']
 phenos = ('Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear')
@@ -229,7 +222,7 @@ df['sex'].unique()
 # In[16]:
 
 
-np.sum(df.loc[df[train_test_str] == 1,'sex'] == 2)
+np.sum(df.loc[df['nuisance_sample'] == 1,'sex'] == 2)
 
 
 # In[17]:
@@ -240,9 +233,9 @@ f.set_figwidth(6.5)
 f.set_figheight(2.5)
 colormap = sns.color_palette("pastel", 2)
 
-sns.distplot(df.loc[df[train_test_str] == 0,'ageAtScan1_Years'], bins=20, hist=True, kde=False, rug=False, label = labels[0],
+sns.distplot(df.loc[df['nuisance_sample'] == 0,'ageAtScan1_Years'], bins=20, hist=True, kde=False, rug=False, label = labels[0],
              hist_kws={"histtype": "step", "linewidth": 2, "alpha": 1}, color=list(cmap[0]), ax = axes[0]);
-sns.distplot(df.loc[df[train_test_str] == 1,'ageAtScan1_Years'], bins=20, hist=True, kde=False, rug=False, label = labels[1],
+sns.distplot(df.loc[df['nuisance_sample'] == 1,'ageAtScan1_Years'], bins=20, hist=True, kde=False, rug=False, label = labels[1],
              hist_kws={"histtype": "step", "linewidth": 2, "alpha": 1}, color=list(cmap[1]), ax = axes[0]);
 axes[0].set_xlabel('Age (years)');
 axes[0].set_ylabel('Number of participants');
@@ -252,8 +245,8 @@ axes[0].set_xticks(np.arange(np.min(np.round(age_unique,0)), np.max(np.round(age
 barWidth = 0.25
 
 # Sex
-y_train = [np.sum(df.loc[df[train_test_str] == 0,'sex'] == 1), np.sum(df.loc[df[train_test_str] == 0,'sex'] == 2)]
-y_test = [np.sum(df.loc[df[train_test_str] == 1,'sex'] == 1), np.sum(df.loc[df[train_test_str] == 1,'sex'] == 2)]
+y_train = [np.sum(df.loc[df['nuisance_sample'] == 0,'sex'] == 1), np.sum(df.loc[df['nuisance_sample'] == 0,'sex'] == 2)]
+y_test = [np.sum(df.loc[df['nuisance_sample'] == 1,'sex'] == 1), np.sum(df.loc[df['nuisance_sample'] == 1,'sex'] == 2)]
 r1 = np.arange(len(y_train))+barWidth/2
 r2 = [x + barWidth for x in r1]
 axes[1].bar(r1, y_train, width = barWidth, color = cmap[0], label = labels[0])
@@ -271,12 +264,12 @@ f.savefig('age_distributions.svg', dpi = 300, bbox_inches = 'tight', pad_inches 
 # In[18]:
 
 
-df_rc = pd.melt(df, id_vars = train_test_str, value_vars = phenos)
+df_rc = pd.melt(df, id_vars = 'nuisance_sample', value_vars = phenos)
 
 f, ax = plt.subplots()
 f.set_figwidth(2.5)
 f.set_figheight(4)
-ax = sns.violinplot(y='variable', x='value', hue=train_test_str, data=df_rc, palette = cmap, split=True, scale='width', inner = 'quartile', orient = 'h')
+ax = sns.violinplot(y='variable', x='value', hue='nuisance_sample', data=df_rc, palette = cmap, split=True, scale='width', inner = 'quartile', orient = 'h')
 ax.get_legend().remove()
 ax.set_yticklabels(phenos_label_short)
 ax.set_ylabel('Psychopathology phenotypes')
