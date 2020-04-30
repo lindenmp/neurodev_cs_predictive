@@ -128,55 +128,27 @@ df['dti64QAManualScore'].unique()
 np.sum(df['dti64QAManualScore'] == 2)
 
 
-# # Randomly sample subset for nuisance regression
-
 # In[10]:
-
-
-df.loc[:,'nuisance_sample'] = 0
-np.random.seed(0)
-my_idx = df.sample(frac = 0.1).index
-df.loc[my_idx,'nuisance_sample'] = 1
-print('Main sample: ', np.sum(df['nuisance_sample'] == 0), 'Nuisance sample:', np.sum(df['nuisance_sample'] == 1))
-
-
-# # Characterise dataset
-
-# In[11]:
 
 
 # Convert age to years
 df['ageAtScan1_Years'] = np.round(df.ageAtScan1/12, decimals=1)
 
 
-# In[12]:
+# In[11]:
 
 
 # find unique ages
 age_unique = np.unique(df.ageAtScan1_Years)
 print('There are', age_unique.shape[0], 'unique age points')
 
-# Check if train and test represent the full unique age space
-train_diff = np.setdiff1d(df[df['nuisance_sample'] == 0].ageAtScan1_Years,age_unique)
-test_diff = np.setdiff1d(df[df['nuisance_sample'] == 1].ageAtScan1_Years,age_unique)
-
-if train_diff.size == 0:
-    print('All unique age points are represented in the main set')
-elif train_diff.size != 0:
-    print('All unique age points ARE NOT represented in the main set')
-    
-if test_diff.size == 0:
-    print('All unique age points are represented in the nuisance set')
-elif test_diff.size != 0:
-    print('All unique age points ARE NOT represented in the nuisance set')
-
 
 # ## Export
 
-# In[13]:
+# In[12]:
 
 
-header = ['nuisance_sample', 'ageAtScan1', 'ageAtScan1_Years','sex','race2','handednessv2',
+header = ['ageAtScan1', 'ageAtScan1_Years','sex','race2','handednessv2',
           'dti64MeanAbsRMS','dti64MeanRelRMS','dti64MaxAbsRMS','dti64MaxRelRMS','mprage_antsCT_vol_TBV', 'averageManualRating',
           'Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear',
             'Overall_Efficiency', 'Overall_Accuracy',
@@ -196,7 +168,7 @@ df.to_csv(os.path.join(os.environ['TRTEDIR'], 'df_pheno.csv'), columns = header)
 
 # # Plots
 
-# In[14]:
+# In[13]:
 
 
 if not os.path.exists(os.environ['FIGDIR']): os.makedirs(os.environ['FIGDIR'])
@@ -213,19 +185,13 @@ print(phenos)
 
 # ## Age
 
-# In[15]:
+# In[14]:
 
 
 df['sex'].unique()
 
 
-# In[16]:
-
-
-np.sum(df.loc[df['nuisance_sample'] == 1,'sex'] == 2)
-
-
-# In[17]:
+# In[15]:
 
 
 f, axes = plt.subplots(1,2)
@@ -233,10 +199,8 @@ f.set_figwidth(6.5)
 f.set_figheight(2.5)
 colormap = sns.color_palette("pastel", 2)
 
-sns.distplot(df.loc[df['nuisance_sample'] == 0,'ageAtScan1_Years'], bins=20, hist=True, kde=False, rug=False, label = labels[0],
+sns.distplot(df.loc[:,'ageAtScan1_Years'], bins=20, hist=True, kde=False, rug=False, label = labels[1],
              hist_kws={"histtype": "step", "linewidth": 2, "alpha": 1}, color=list(cmap[0]), ax = axes[0]);
-sns.distplot(df.loc[df['nuisance_sample'] == 1,'ageAtScan1_Years'], bins=20, hist=True, kde=False, rug=False, label = labels[1],
-             hist_kws={"histtype": "step", "linewidth": 2, "alpha": 1}, color=list(cmap[1]), ax = axes[0]);
 axes[0].set_xlabel('Age (years)');
 axes[0].set_ylabel('Number of participants');
 axes[0].set_xticks(np.arange(np.min(np.round(age_unique,0)), np.max(np.round(age_unique,0)), 2))
@@ -245,15 +209,13 @@ axes[0].set_xticks(np.arange(np.min(np.round(age_unique,0)), np.max(np.round(age
 barWidth = 0.25
 
 # Sex
-y_train = [np.sum(df.loc[df['nuisance_sample'] == 0,'sex'] == 1), np.sum(df.loc[df['nuisance_sample'] == 0,'sex'] == 2)]
-y_test = [np.sum(df.loc[df['nuisance_sample'] == 1,'sex'] == 1), np.sum(df.loc[df['nuisance_sample'] == 1,'sex'] == 2)]
+y_train = [np.sum(df.loc[:,'sex'] == 1), np.sum(df.loc[:,'sex'] == 2)]
 r1 = np.arange(len(y_train))+barWidth/2
 r2 = [x + barWidth for x in r1]
-axes[1].bar(r1, y_train, width = barWidth, color = cmap[0], label = labels[0])
-axes[1].bar(r2, y_test, width = barWidth, color = cmap[1], label = labels[1])
+axes[1].bar([0,0.5], y_train, width = barWidth, color = cmap[0])
 axes[1].set_xlabel('Sex')
 # axes[1].set_ylabel('Number of participants')
-axes[1].set_xticks([r + barWidth for r in range(len(y_train))])
+axes[1].set_xticks([0,0.5])
 axes[1].set_xticklabels(['Male', 'Female'])
 
 f.savefig('age_distributions.svg', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
@@ -261,16 +223,16 @@ f.savefig('age_distributions.svg', dpi = 300, bbox_inches = 'tight', pad_inches 
 
 # ## Phenotype distributions over train/test
 
-# In[18]:
+# In[16]:
 
 
-df_rc = pd.melt(df, id_vars = 'nuisance_sample', value_vars = phenos)
+df_rc = pd.melt(df, value_vars = phenos)
 
 f, ax = plt.subplots()
 f.set_figwidth(2.5)
 f.set_figheight(4)
-ax = sns.violinplot(y='variable', x='value', hue='nuisance_sample', data=df_rc, palette = cmap, split=True, scale='width', inner = 'quartile', orient = 'h')
-ax.get_legend().remove()
+ax = sns.violinplot(y='variable', x='value', data=df_rc, split=True, scale='width', inner = 'quartile', orient = 'h')
+# ax.get_legend().remove()
 ax.set_yticklabels(phenos_label_short)
 ax.set_ylabel('Psychopathology phenotypes')
 ax.set_xlabel('Phenotype score')

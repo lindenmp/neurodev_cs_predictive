@@ -37,14 +37,12 @@ from func import node_strength, ave_control, modal_control, consistency_thresh
 # In[3]:
 
 
-train_test_str = 'squeakycleanExclude'
 exclude_str = 't1Exclude'
-extra_str = '_consist' # '_vol_norm' '_noboxcox'
+extra_str = '' # '_vol_norm' '_noboxcox' '_consist'
 edge_weight = 'streamlineCount' # 'streamlineCount' 'fa' 'mean_streamlineLength' 'adc'
 parc_scale = 200
-primary_covariate = 'ageAtScan1_Years'
-parcel_names, parcel_loc, drop_parcels, num_parcels, yeo_idx, yeo_labels = set_proj_env(exclude_str = exclude_str, train_test_str = train_test_str,
-                                                                                        parc_scale = parc_scale, primary_covariate = primary_covariate,
+parcel_names, parcel_loc, drop_parcels, num_parcels, yeo_idx, yeo_labels = set_proj_env(exclude_str = exclude_str,
+                                                                                        parc_scale = parc_scale,
                                                                                        extra_str = extra_str, edge_weight = edge_weight)
 
 
@@ -101,7 +99,7 @@ ac_labels = ['ac_' + str(i) for i in range(num_parcels)]
 mc_labels = ['mc_' + str(i) for i in range(num_parcels)]
 
 df_node = pd.DataFrame(index = df.index, columns = vol_labels + str_labels + ac_labels + mc_labels)
-df_node.insert(0, train_test_str, df[train_test_str])
+# df_node.insert(0, 'nuisance_sample', df['nuisance_sample'])
 
 print(df_node.shape)
 
