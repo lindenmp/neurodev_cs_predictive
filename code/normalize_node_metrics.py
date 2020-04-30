@@ -228,3 +228,32 @@ df_node.isna().any().any()
 df_node.to_csv(os.path.join(os.environ['MODELDIR'], 'df_node_normalized.csv'))
 # df_node.to_csv(os.path.join(os.environ['MODELDIR'], 'df_node_normalized_my_thresh-'+str(my_thresh)+'.csv'))
 
+
+# ## Export for prediction
+
+# In[20]:
+
+
+phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear']
+# phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear',
+#          'F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy', 'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
+#           'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency']
+# phenos = ['F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy', 'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
+#           'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency']
+
+
+# In[21]:
+
+
+# Create subdirectory for specific normative model -- labeled according to parcellation/resolution choices and covariates
+outdir = os.path.join(os.environ['MODELDIR'], 'predict_pheno')
+print(outdir)
+if not os.path.exists(outdir): os.mkdir(outdir);
+
+
+# In[22]:
+
+
+df_node.to_csv(os.path.join(outdir, 'X.csv'))
+df.loc[:,phenos].to_csv(os.path.join(outdir, 'y.csv'))
+
