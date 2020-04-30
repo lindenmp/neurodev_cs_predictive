@@ -42,6 +42,9 @@ def set_proj_env(dataset = 'PNC', train_test_str = 'squeakycleanExclude', exclud
 
         os.environ['CONN_STR'] = 'connectivity'
 
+        rstsdir = os.path.join(derivsdir, 'processedData/rest/restNetwork_schaefer400/Schaefer400Timeseries'); os.environ['RSTSDIR'] = rstsdir
+        rsts_name_tmp = 'scanid_Schaefer' + str(parc_scale) + '_ts.1D'; os.environ['RSTS_NAME_TMP'] = rsts_name_tmp
+
     # Normative dir based on the train/test split --> specific combinations of parcellation/number of parcels/edge weight come off this directory
     # This is the first of the output directories for the project and is created by get_train_test.ipynb if it doesn't exist
     trtedir = os.path.join(projdir, 'analysis/normative', exclude_str, train_test_str); os.environ['TRTEDIR'] = trtedir
