@@ -3,7 +3,7 @@
 
 # # Results, section 2:
 
-# In[1]:
+# In[ ]:
 
 
 # Essentials
@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 plt.rcParams['svg.fonttype'] = 'none'
 
 
-# In[2]:
+# In[ ]:
 
 
 sys.path.append('/Users/lindenmp/Dropbox/Work/ResProjects/neurodev_cs_predictive/code/func/')
@@ -33,54 +33,39 @@ sys.path.append('/Users/lindenmp/Dropbox/Work/git/pyfunc/')
 from func import get_fdr_p_df
 
 
-# In[3]:
+# In[ ]:
 
 
-train_test_str = 'squeakycleanExclude'
 exclude_str = 't1Exclude'
-extra_str = '_consist' # '_vol_norm' '_noboxcox'
+extra_str = '' # '_vol_norm' '_noboxcox' '_consist'
 edge_weight = 'streamlineCount' # 'streamlineCount' 'fa' 'mean_streamlineLength' 'adc'
 parc_scale = 200
-primary_covariate = 'ageAtScan1_Years'
-parcel_names, parcel_loc, drop_parcels, num_parcels, yeo_idx, yeo_labels = set_proj_env(exclude_str = exclude_str, train_test_str = train_test_str,
-                                                                                        parc_scale = parc_scale, primary_covariate = primary_covariate,
+parcel_names, parcel_loc, drop_parcels, num_parcels, yeo_idx, yeo_labels = set_proj_env(exclude_str = exclude_str,
+                                                                                        parc_scale = parc_scale,
                                                                                        extra_str = extra_str, edge_weight = edge_weight)
 
 
-# In[4]:
+# In[ ]:
 
 
 os.environ['NORMATIVEDIR']
 
 
-# In[5]:
+# In[ ]:
 
 
 metrics = ['vol', 'str', 'ac', 'mc']
 phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear']
-
-
-# In[6]:
-
-
-# metrics = ('vol', 'str', 'ac', 'mc')
-# metrics = ('vol', 'str')
-# metrics = ('ac',)
-
-# phenos = ('Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear',
+# phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear',
 #          'F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy', 'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
-#           'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency')
-
-
-# phenos = ('F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy', 'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
-#           'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency')
-
-# phenos = ('Overall_Psychopathology', 'F3_Executive_Efficiency')
+#           'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency']
+# phenos = ['F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy', 'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
+#           'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency']
 
 
 # ## Setup plots
 
-# In[7]:
+# In[ ]:
 
 
 if not os.path.exists(os.environ['FIGDIR']): os.makedirs(os.environ['FIGDIR'])
@@ -91,7 +76,7 @@ cmap = sns.color_palette("pastel", 3)
 
 # ## Load data
 
-# In[8]:
+# In[ ]:
 
 
 # Train
@@ -105,14 +90,14 @@ df_node_test = pd.read_csv(os.path.join(os.environ['NORMATIVEDIR'], 'resp_test.c
 df_node_test.set_index(['bblid', 'scanid'], inplace = True); print(df_node_test.shape)
 
 
-# In[9]:
+# In[ ]:
 
 
 z = np.loadtxt(os.path.join(os.environ['NORMATIVEDIR'], 'Z.txt'), delimiter = ' ').transpose()
 df_z = pd.DataFrame(data = z, index = df_node_test.index, columns = df_node_test.columns); print(df_z.shape)
 
 
-# In[10]:
+# In[ ]:
 
 
 smse = np.loadtxt(os.path.join(os.environ['NORMATIVEDIR'], 'smse.txt'), delimiter = ' ').transpose()
@@ -123,7 +108,7 @@ region_filter = df_smse.iloc[:,0] < smse_thresh
 print(region_filter.sum())
 
 
-# In[11]:
+# In[ ]:
 
 
 # Forward model
@@ -134,7 +119,7 @@ yhat_forward = np.loadtxt(os.path.join(os.environ['NORMATIVEDIR'], 'forward/yhat
 df_yhat_forward = pd.DataFrame(data = yhat_forward, index = synth_cov_test.index, columns = df_node_test.columns)
 
 
-# In[12]:
+# In[ ]:
 
 
 # at each roi, the differences between first and last age point in the synthetic data
@@ -158,7 +143,7 @@ print(np.sum(nm_is_pos))
 df_z.loc[:,nm_is_pos] = df_z.loc[:,nm_is_pos] * -1
 
 
-# In[13]:
+# In[ ]:
 
 
 my_bool = df_train.loc[:,phenos].isna().any(axis = 1)
@@ -172,7 +157,7 @@ df_z = df_z.loc[~my_bool,:]
 print('N:', df_test.shape[0])
 
 
-# In[14]:
+# In[ ]:
 
 
 f, axes = plt.subplots()
@@ -189,14 +174,14 @@ for i, pheno in enumerate(phenos):
 
 # ### Normalize phenotypes
 
-# In[15]:
+# In[ ]:
 
 
 # for pheno in phenos:
 #     df_test.loc[:,pheno] = sp.stats.yeojohnson(df_test.loc[:,pheno])[0]
 
 
-# In[16]:
+# In[ ]:
 
 
 # f, axes = plt.subplots()
@@ -213,13 +198,13 @@ for i, pheno in enumerate(phenos):
 
 # ### Regress age/sex out of psychopathology phenotypes
 
-# In[17]:
+# In[ ]:
 
 
 covs = [primary_covariate, 'sex_adj', 'mprage_antsCT_vol_TBV', 'dti64MeanRelRMS']
 
 
-# In[18]:
+# In[ ]:
 
 
 r = pd.DataFrame(index = covs, columns = phenos)
@@ -239,7 +224,7 @@ p = get_fdr_p_df(p)
 sns.heatmap(r[p<.05].astype(float), annot = True, center = 0, ax = ax, square = True)
 
 
-# In[19]:
+# In[ ]:
 
 
 # fit nuisance regression on the train data
@@ -255,7 +240,7 @@ y_pred.columns = phenos
 df_test.loc[:,phenos] = df_test.loc[:,phenos] - y_pred
 
 
-# In[20]:
+# In[ ]:
 
 
 r = pd.DataFrame(index = covs, columns = phenos)
@@ -275,7 +260,7 @@ p = get_fdr_p_df(p)
 sns.heatmap(r[p<.05].astype(float), annot = True, center = 0, ax = ax, square = True)
 
 
-# In[21]:
+# In[ ]:
 
 
 f, axes = plt.subplots()
@@ -292,23 +277,23 @@ for i, pheno in enumerate(phenos):
 
 # ## Export
 
-# In[20]:
+# In[ ]:
 
 
 # Create subdirectory for specific normative model -- labeled according to parcellation/resolution choices and covariates
-outdir = os.path.join(os.environ['NORMATIVEDIR'], 'predict_pheno_signflip')
+outdir = os.path.join(os.environ['NORMATIVEDIR'], 'predict_cog_signflip')
 print(outdir)
 if not os.path.exists(outdir): os.mkdir(outdir);
 
 
-# In[21]:
+# In[ ]:
 
 
 my_str = '|'.join(metrics)
 my_str
 
 
-# In[22]:
+# In[ ]:
 
 
 # df_z.loc[:,region_filter].filter(regex = my_str).to_csv(os.path.join(outdir, 'X.csv'))
