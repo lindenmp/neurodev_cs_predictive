@@ -7,11 +7,11 @@
     conda activate neurodev_cs_predictive
 
     # Essentials
-    pip install jupyterlab ipython pandas numpy seaborn matplotlib nibabel glob3
+    pip install jupyterlab ipython pandas numpy seaborn matplotlib nibabel glob3 nilearn
     pip install jupyter_contrib_nbextensions && jupyter contrib nbextension install
 
 	# Statistics
-	pip install scipy statsmodels sklearn pingouin pygam
+	pip install scipy statsmodels sklearn pingouin pygam brainspace
 
 	# Pysurfer for plotting
 	pip install mayavi
