@@ -40,7 +40,7 @@ from func import mark_outliers, winsorize_outliers_signed
 exclude_str = 't1Exclude'
 extra_str = '' # '_vol_norm' '_noboxcox' '_consist'
 edge_weight = 'streamlineCount' # 'streamlineCount' 'fa' 'mean_streamlineLength' 'adc'
-parc_scale = 200
+parc_scale = 400
 parcel_names, parcel_loc, drop_parcels, num_parcels, yeo_idx, yeo_labels = set_proj_env(exclude_str = exclude_str,
                                                                                         parc_scale = parc_scale,
                                                                                        extra_str = extra_str, edge_weight = edge_weight)

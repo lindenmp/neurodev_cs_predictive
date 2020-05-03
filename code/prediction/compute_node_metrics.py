@@ -40,7 +40,7 @@ from func import node_strength, ave_control, modal_control, consistency_thresh
 exclude_str = 't1Exclude'
 extra_str = '' # '_vol_norm' '_noboxcox' '_consist'
 edge_weight = 'streamlineCount' # 'streamlineCount' 'fa' 'mean_streamlineLength' 'adc'
-parc_scale = 200
+parc_scale = 400
 parcel_names, parcel_loc, drop_parcels, num_parcels, yeo_idx, yeo_labels = set_proj_env(exclude_str = exclude_str,
                                                                                         parc_scale = parc_scale,
                                                                                        extra_str = extra_str, edge_weight = edge_weight)
@@ -60,7 +60,7 @@ if not os.path.exists(os.environ['MODELDIR']): os.makedirs(os.environ['MODELDIR'
 # In[5]:
 
 
-threshold = True
+threshold = False
 vol_norm = False
 
 
@@ -211,22 +211,23 @@ else:
     A_out = A.copy()
 
 
-# In[19]:
+# In[20]:
 
 
-np.all(np.sum(A_mask[:,:], axis = 1) > 0)
+if threshold:
+    np.all(np.sum(A_mask, axis = 1) > 0)
 
 
 # ### Check if any subjects have disconnected nodes in A matrix
 
-# In[20]:
+# In[21]:
 
 
 # subject filter
 subj_filt = np.zeros((df.shape[0],)).astype(bool)
 
 
-# In[21]:
+# In[22]:
 
 
 for i in range(A_out.shape[2]):
@@ -234,13 +235,13 @@ for i in range(A_out.shape[2]):
         subj_filt[i] = True
 
 
-# In[22]:
+# In[23]:
 
 
 np.sum(subj_filt)
 
 
-# In[23]:
+# In[24]:
 
 
 if any(subj_filt):
@@ -252,7 +253,7 @@ print(df_node.shape)
 
 # ### Get streamline count and network density
 
-# In[24]:
+# In[25]:
 
 
 A_c = np.zeros((A_out.shape[2],))
@@ -266,7 +267,7 @@ df.loc[:,'network_density'] = A_d
 
 # ### Normalize A by regional volume
 
-# In[25]:
+# In[26]:
 
 
 if vol_norm:
@@ -287,7 +288,7 @@ else:
 
 # ### Compute node metrics
 
-# In[26]:
+# In[27]:
 
 
 # fc stored as 3d matrix, subjects of 3rd dim
@@ -307,19 +308,19 @@ df_node.loc[:,mc_labels] = MC
 
 # ## Save out
 
-# In[27]:
+# In[28]:
 
 
 df_node.isna().any().any()
 
 
-# In[28]:
+# In[29]:
 
 
 os.environ['MODELDIR']
 
 
-# In[29]:
+# In[30]:
 
 
 # Save out

@@ -148,7 +148,7 @@ print('There are', age_unique.shape[0], 'unique age points')
 # In[12]:
 
 
-header = ['ageAtScan1', 'ageAtScan1_Years','sex','race2','handednessv2',
+header = ['ageAtScan1', 'ageAtScan1_Years','sex','race2','handednessv2', 'restProtocolValidationStatus', 'restExclude',
           'dti64MeanAbsRMS','dti64MeanRelRMS','dti64MaxAbsRMS','dti64MaxRelRMS','mprage_antsCT_vol_TBV', 'averageManualRating',
           'Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear',
             'Overall_Efficiency', 'Overall_Accuracy',
@@ -237,4 +237,21 @@ ax.set_yticklabels(phenos_label_short)
 ax.set_ylabel('Psychopathology phenotypes')
 ax.set_xlabel('Phenotype score')
 f.savefig('phenos_distributions.svg', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
+
+
+# ### Export sample for FC gradients
+
+# In[17]:
+
+
+# 4) rs-fMRI exclusion
+df = df[df['restProtocolValidationStatus'] == 1]
+df = df[df['restExclude'] == 0]
+print('N after rs-fMRI exclusion:', df.shape[0])
+
+
+# In[18]:
+
+
+df.to_csv(os.path.join(os.environ['TRTEDIR'], 'df_gradients.csv'), columns = header)
 
