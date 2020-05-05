@@ -240,7 +240,7 @@ get_ipython().run_line_magic('pylab', 'qt')
 # In[24]:
 
 
-for i in range(0,1):
+for i in range(0,2):
     for hemi in ('lh', 'rh'):
         # Plots of univariate pheno correlation
         fig_str = hemi + '_gradient_' + str(i)
