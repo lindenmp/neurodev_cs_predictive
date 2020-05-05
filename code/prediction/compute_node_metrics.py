@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # Preamble
-
 # In[1]:
 
 
@@ -38,9 +36,9 @@ from func import node_strength, ave_control, modal_control, consistency_thresh
 
 
 exclude_str = 't1Exclude'
-extra_str = '' # '_vol_norm' '_noboxcox' '_consist'
+extra_str = '_consist' # '_vol_norm' '_noboxcox' '_consist'
 edge_weight = 'streamlineCount' # 'streamlineCount' 'fa' 'mean_streamlineLength' 'adc'
-parc_scale = 400
+parc_scale = 200
 parcel_names, parcel_loc, drop_parcels, num_parcels, yeo_idx, yeo_labels = set_proj_env(exclude_str = exclude_str,
                                                                                         parc_scale = parc_scale,
                                                                                        extra_str = extra_str, edge_weight = edge_weight)
@@ -60,7 +58,7 @@ if not os.path.exists(os.environ['MODELDIR']): os.makedirs(os.environ['MODELDIR'
 # In[5]:
 
 
-threshold = False
+threshold = True
 vol_norm = False
 
 
@@ -211,7 +209,7 @@ else:
     A_out = A.copy()
 
 
-# In[20]:
+# In[19]:
 
 
 if threshold:
@@ -220,14 +218,14 @@ if threshold:
 
 # ### Check if any subjects have disconnected nodes in A matrix
 
-# In[21]:
+# In[20]:
 
 
 # subject filter
 subj_filt = np.zeros((df.shape[0],)).astype(bool)
 
 
-# In[22]:
+# In[21]:
 
 
 for i in range(A_out.shape[2]):
@@ -235,13 +233,13 @@ for i in range(A_out.shape[2]):
         subj_filt[i] = True
 
 
-# In[23]:
+# In[22]:
 
 
 np.sum(subj_filt)
 
 
-# In[24]:
+# In[23]:
 
 
 if any(subj_filt):
@@ -253,7 +251,7 @@ print(df_node.shape)
 
 # ### Get streamline count and network density
 
-# In[25]:
+# In[24]:
 
 
 A_c = np.zeros((A_out.shape[2],))
@@ -267,7 +265,7 @@ df.loc[:,'network_density'] = A_d
 
 # ### Normalize A by regional volume
 
-# In[26]:
+# In[25]:
 
 
 if vol_norm:
@@ -288,7 +286,7 @@ else:
 
 # ### Compute node metrics
 
-# In[27]:
+# In[26]:
 
 
 # fc stored as 3d matrix, subjects of 3rd dim
@@ -308,19 +306,19 @@ df_node.loc[:,mc_labels] = MC
 
 # ## Save out
 
-# In[28]:
+# In[27]:
 
 
 df_node.isna().any().any()
 
 
-# In[29]:
+# In[28]:
 
 
 os.environ['MODELDIR']
 
 
-# In[30]:
+# In[29]:
 
 
 # Save out
@@ -328,4 +326,33 @@ np.save(os.path.join(os.environ['MODELDIR'], 'A'), A)
 np.save(os.path.join(os.environ['MODELDIR'], 'A_out'), A_out)
 df_node.to_csv(os.path.join(os.environ['MODELDIR'], 'df_node_base.csv'))
 df.to_csv(os.path.join(os.environ['MODELDIR'], 'df_pheno.csv'))
+
+
+# ## Export for prediction
+
+# In[30]:
+
+
+phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear']
+# phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear',
+#          'F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy', 'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
+#           'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency']
+# phenos = ['F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy', 'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
+#           'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency']
+
+
+# In[31]:
+
+
+# Create subdirectory for specific normative model -- labeled according to parcellation/resolution choices and covariates
+outdir = os.path.join(os.environ['MODELDIR'], 'predict_pheno')
+print(outdir)
+if not os.path.exists(outdir): os.mkdir(outdir);
+
+
+# In[32]:
+
+
+df_node.to_csv(os.path.join(outdir, 'X.csv'))
+df.loc[:,phenos].to_csv(os.path.join(outdir, 'y.csv'))
 
