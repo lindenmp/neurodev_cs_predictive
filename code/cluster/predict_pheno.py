@@ -64,8 +64,8 @@ def shuffle_data(X, y, seed = 0):
     return X_shuf, y_shuf
 
 def get_reg(num_params = 10):
-    regs = {'rr': Ridge(),
-            'lr': Lasso(),
+    regs = {'rr': Ridge(max_iter = 100000),
+            'lr': Lasso(max_iter = 100000),
             'krr_lin': KernelRidge(kernel='linear'),
             'krr_rbf': KernelRidge(kernel='rbf'),
             # 'svr_lin': LinearSVR(max_iter=100000),
