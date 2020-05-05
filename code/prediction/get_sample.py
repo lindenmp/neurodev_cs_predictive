@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # Preamble
-
 # In[1]:
 
 
@@ -11,6 +9,7 @@ import os, sys, glob
 import pandas as pd
 import numpy as np
 import nibabel as nib
+import scipy.io as sio
 
 # Stats
 import scipy as sp
