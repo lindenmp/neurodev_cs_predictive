@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import copy
 import json
+from datetime import datetime
 
 # Stats
 import scipy as sp
@@ -129,6 +130,9 @@ def reg_ncv_wrapper(X, y, alg = 'krr_rbf', seed = 0, scoring = 'r2'):
 # --------------------------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------------------------
+# start timer
+start = datetime.now()
+
 # inputs
 X = pd.read_csv(X_file)
 X.set_index(['bblid', 'scanid'], inplace = True)
@@ -158,6 +162,8 @@ elif score == 'mse':
 # prediction
 best_params, best_scores, nested_score = reg_ncv_wrapper(X = X, y = y, alg = alg, seed = seed, scoring = scoring)
 
+# stop timer
+stop = datetime.now()
 # --------------------------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -173,6 +179,10 @@ f.write(json_data)
 f.close()
 
 np.savetxt(os.path.join(outdir,'nested_score.csv'), nested_score, delimiter=',')
+
+# runtime
+run_time = stop - start
+np.savetxt(os.path.join(outdir,'run_time_seconds.txt'), np.array([run_time.seconds]))
 # --------------------------------------------------------------------------------------------------------------------
 
 print('Finished!')
