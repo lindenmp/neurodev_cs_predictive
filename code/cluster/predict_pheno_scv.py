@@ -98,6 +98,11 @@ def get_stratified_cv(X, y, n_splits = 10):
 
 
 def run_reg_scv(X, y, reg, param_grid, n_splits = 10, scoring = 'r2', run_perm = False):
+    # NaN check
+    if y.isna().any():
+        print('Dropping NaNs: ', y.isna().sum())
+        X = X.loc[~y.isna(),:]
+        y = y.loc[~y.isna()]
     
     pipe = Pipeline(steps=[('standardize', StandardScaler()),
                            ('reg', reg)])
