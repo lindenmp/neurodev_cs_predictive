@@ -36,7 +36,12 @@ from func import my_get_cmap
 
 
 exclude_str = 't1Exclude'
-_ = set_proj_env(exclude_str = exclude_str)
+extra_str = '_consist' # '_vol_norm' '_noboxcox' '_consist'
+edge_weight = 'streamlineCount' # 'streamlineCount' 'fa' 'mean_streamlineLength' 'adc'
+parc_scale = 200
+parcel_names, parcel_loc, drop_parcels, num_parcels, yeo_idx, yeo_labels = set_proj_env(exclude_str = exclude_str,
+                                                                                        parc_scale = parc_scale,
+                                                                                       extra_str = extra_str, edge_weight = edge_weight)
 
 
 # ### Setup output directory
@@ -142,32 +147,49 @@ age_unique = np.unique(df.ageAtScan1_Years)
 print('There are', age_unique.shape[0], 'unique age points')
 
 
-# ## Export
+# ## Normalize
 
 # In[12]:
+
+
+phenos = ('Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear')
+print(phenos)
+
+
+# In[13]:
+
+
+for pheno in phenos:
+    # normalize regional metric
+    x = sp.stats.yeojohnson(df.loc[:,pheno])[0]
+    # store normalized version
+    df.loc[:,pheno + '_norm'] = x
+
+
+# In[14]:
+
+
+phenos_norm = [s + '_norm' for s in phenos]
+print(phenos_norm)
+
+
+# ## Export
+
+# In[15]:
 
 
 header = ['ageAtScan1', 'ageAtScan1_Years','sex','race2','handednessv2', 'restProtocolValidationStatus', 'restExclude',
           'dti64MeanAbsRMS','dti64MeanRelRMS','dti64MaxAbsRMS','dti64MaxRelRMS','mprage_antsCT_vol_TBV', 'averageManualRating',
           'Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear',
-            'Overall_Efficiency', 'Overall_Accuracy',
-           'Overall_Speed', 'F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy',
-           'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
-           'F2_Memory.Efficiency', 'F3_Executive_Efficiency',
-           'F4_Social_Cognition_Efficiency', 'F1_Slow_Speed', 'F2_Fast_Speed',
-           'F3_Memory_Speed', 'Overall_Efficiency_Ar', 'Overall_Accuracy_Ar',
-           'Overall_Speed_Ar', 'F1_Exec_Comp_Cog_Accuracy_Ar',
-           'F2_Social_Cog_Accuracy_Ar', 'F3_Memory_Accuracy_Ar',
-           'F1_Social_Cognition_Efficiency_Ar',
-           'F2_Complex_Reasoning_Efficiency_Ar', 'F3_Memory_Efficiency_Ar',
-           'F4_Executive_Efficiency_Ar', 'F1_Slow_Speed_Ar', 'F2_Memory_Speed_Ar',
-           'F3_Fast_Speed_Ar']
+          'Overall_Psychopathology_norm','Psychosis_Positive_norm','Psychosis_NegativeDisorg_norm','AnxiousMisery_norm','Externalizing_norm','Fear_norm',
+          'F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy', 'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
+          'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency']
 df.to_csv(os.path.join(os.environ['TRTEDIR'], 'df_pheno.csv'), columns = header)
 
 
 # # Plots
 
-# In[13]:
+# In[16]:
 
 
 if not os.path.exists(os.environ['FIGDIR']): os.makedirs(os.environ['FIGDIR'])
@@ -176,21 +198,19 @@ sns.set(style='white', context = 'paper', font_scale = 1)
 cmap = my_get_cmap('pair')
 
 labels = ['Train', 'Test']
-phenos = ('Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear')
 phenos_label_short = ('Ov. Psych.', 'Psy. (pos.)', 'Psy. (neg.)', 'Anx.-mis.', 'Ext.', 'Fear')
 phenos_label = ('Overall Psychopathology','Psychosis (Positive)','Psychosis (Negative)','Anxious-Misery','Externalizing','Fear')
-print(phenos)
 
 
 # ## Age
 
-# In[14]:
+# In[17]:
 
 
 df['sex'].unique()
 
 
-# In[15]:
+# In[18]:
 
 
 f, axes = plt.subplots(1,2)
@@ -222,7 +242,7 @@ f.savefig('age_distributions.svg', dpi = 300, bbox_inches = 'tight', pad_inches 
 
 # ## Phenotype distributions over train/test
 
-# In[16]:
+# In[19]:
 
 
 df_rc = pd.melt(df, value_vars = phenos)
@@ -238,9 +258,25 @@ ax.set_xlabel('Phenotype score')
 f.savefig('phenos_distributions.svg', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
 
 
+# In[20]:
+
+
+df_rc = pd.melt(df, value_vars = phenos_norm)
+
+f, ax = plt.subplots()
+f.set_figwidth(2.5)
+f.set_figheight(4)
+ax = sns.violinplot(y='variable', x='value', data=df_rc, split=True, scale='width', inner = 'quartile', orient = 'h')
+# ax.get_legend().remove()
+ax.set_yticklabels(phenos_label_short)
+ax.set_ylabel('Psychopathology phenotypes')
+ax.set_xlabel('Phenotype score')
+f.savefig('phenos_distributions.svg', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
+
+
 # ### Export sample for FC gradients
 
-# In[17]:
+# In[21]:
 
 
 # 4) rs-fMRI exclusion
@@ -249,7 +285,7 @@ df = df[df['restExclude'] == 0]
 print('N after rs-fMRI exclusion:', df.shape[0])
 
 
-# In[18]:
+# In[22]:
 
 
 df.to_csv(os.path.join(os.environ['TRTEDIR'], 'df_gradients.csv'), columns = header)
