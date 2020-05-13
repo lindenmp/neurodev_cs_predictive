@@ -49,11 +49,15 @@ outroot = args.outroot
 
 # --------------------------------------------------------------------------------------------------------------------
 # prediction functions
-def corr_pred_true(y_pred, y_true):
-    r = sp.stats.pearsonr(y_pred, y_true)[0]
+def corr_true_pred(y_true, y_pred):
+    r = sp.stats.pearsonr(y_true, y_pred)[0]
     return r
 
-my_scorer = make_scorer(corr_pred_true, greater_is_better = True)
+
+def root_mean_squared_error(y_true, y_pred):
+    mse = np.mean((y_true - y_pred)**2, axis=0)
+    rmse = np.sqrt(mse)
+    return rmse
 
 
 def get_reg(num_params = 10):
@@ -186,7 +190,7 @@ def run_reg_scv(X, y, c, reg, param_grid, n_splits = 10, scoring = 'r2', run_per
         X_sort.reset_index(drop = True, inplace = True)
         c_sort.reset_index(drop = True, inplace = True)
 
-        n_perm = 1000
+        n_perm = 5000
         permuted_acc = np.zeros((n_perm,))
         permuted_acc_nuis = np.zeros((n_perm,))
 
@@ -234,9 +238,13 @@ if not os.path.exists(outdir): os.makedirs(outdir);
 if score == 'r2':
     my_scorer = make_scorer(r2_score, greater_is_better = True)
 elif score == 'corr':
-    my_scorer = make_scorer(corr_pred_true, greater_is_better = True)
+    my_scorer = make_scorer(corr_true_pred, greater_is_better = True)
 elif score == 'mse':
     my_scorer = make_scorer(mean_squared_error, greater_is_better = False)
+elif score == 'rmse':
+    my_scorer = make_scorer(root_mean_squared_error, greater_is_better = False)
+elif score == 'mae':
+    my_scorer = make_scorer(mean_absolute_error, greater_is_better = False)
 
 # prediction
 regs, param_grids = get_reg()

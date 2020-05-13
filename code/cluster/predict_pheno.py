@@ -48,11 +48,16 @@ outroot = args.outroot
 
 # --------------------------------------------------------------------------------------------------------------------
 # prediction functions
-def corr_pred_true(y_pred, y_true):
-    r = sp.stats.pearsonr(y_pred, y_true)[0]
+def corr_true_pred(y_true, y_pred):
+    r = sp.stats.pearsonr(y_true, y_pred)[0]
     return r
 
-my_scorer = make_scorer(corr_pred_true, greater_is_better = True)
+
+def root_mean_squared_error(y_true, y_pred):
+    mse = np.mean((y_true - y_pred)**2, axis=0)
+    rmse = np.sqrt(mse)
+    return rmse
+
 
 def shuffle_data(X, y, seed = 0):
     np.random.seed(seed)
@@ -149,15 +154,19 @@ if not os.path.exists(outdir): os.makedirs(outdir);
 
 # --------------------------------------------------------------------------------------------------------------------
 # set scorer
+my_scorer_corr = make_scorer(corr_true_pred, greater_is_better = True)
+my_scorer_rmse = make_scorer(root_mean_squared_error, greater_is_better = False)
+
 if score == 'r2':
-    # use R2 as main metric
-    scoring = {'r2': 'r2', 'mse': 'neg_mean_squared_error', 'mae': 'neg_mean_absolute_error', 'corr': my_scorer}
+    scoring = {'r2': 'r2', 'mse': 'neg_mean_squared_error', 'rmse': my_scorer_rmse, 'mae': 'neg_mean_absolute_error', 'corr': my_scorer_corr}
 elif score == 'corr':
-    # use corr as main metric
-    scoring = {'corr': my_scorer, 'r2': 'r2', 'mse': 'neg_mean_squared_error', 'mae': 'neg_mean_absolute_error'}
+    scoring = {'corr': my_scorer_corr, 'r2': 'r2', 'mse': 'neg_mean_squared_error', 'rmse': my_scorer_rmse, 'mae': 'neg_mean_absolute_error'}
 elif score == 'mse':
-    # use mse as main metric
-    scoring = {'mse': 'neg_mean_squared_error', 'r2': 'r2', 'mae': 'neg_mean_absolute_error', 'corr': my_scorer}
+    scoring = {'mse': 'neg_mean_squared_error', 'r2': 'r2', 'rmse': my_scorer_rmse, 'mae': 'neg_mean_absolute_error', 'corr': my_scorer_corr}
+elif score == 'rmse':
+    scoring = {'rmse': my_scorer_rmse, 'r2': 'r2', 'mse': 'neg_mean_squared_error', 'mae': 'neg_mean_absolute_error', 'corr': my_scorer_corr}
+elif score == 'mae':
+    scoring = {'mae': 'neg_mean_absolute_error', 'r2': 'r2', 'mse': 'neg_mean_squared_error', 'rmse': my_scorer_rmse, 'corr': my_scorer_corr}
 
 # prediction
 best_params, best_scores, nested_score = reg_ncv_wrapper(X = X, y = y, alg = alg, seed = seed, scoring = scoring)
