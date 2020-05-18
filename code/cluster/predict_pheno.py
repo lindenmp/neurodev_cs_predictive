@@ -49,7 +49,12 @@ outroot = args.outroot
 # --------------------------------------------------------------------------------------------------------------------
 # prediction functions
 def corr_true_pred(y_true, y_pred):
-    r = sp.stats.pearsonr(y_true, y_pred)[0]
+    if type(y_true) == np.ndarray:
+        y_true = y_true.flatten()
+    if type(y_pred) == np.ndarray:
+        y_pred = y_pred.flatten()
+        
+    r,p = sp.stats.pearsonr(y_true, y_pred)
     return r
 
 
