@@ -29,7 +29,7 @@ plt.rcParams['svg.fonttype'] = 'none'
 sys.path.append('/Users/lindenmp/Dropbox/Work/ResProjects/neurodev_cs_predictive/code/func/')
 from proj_environment import set_proj_env
 sys.path.append('/Users/lindenmp/Dropbox/Work/git/pyfunc/')
-from func import node_strength, ave_control, modal_control, consistency_thresh
+from func import node_strength, ave_control, modal_control, consistency_thresh, rank_int
 
 
 # In[3]:
@@ -304,44 +304,125 @@ df_node.loc[:,ac_labels] = AC
 df_node.loc[:,mc_labels] = MC
 
 
-# ## Save out
+# ## Recalculate average control at different C params
 
 # In[27]:
 
 
-df_node.isna().any().any()
+c_params = np.array([10, 100, 1000, 10000, 20000])
 
 
 # In[28]:
 
 
+# output dataframe
+df_node_ac_overc = pd.DataFrame(index = df.index)
+
+for c in c_params:
+    print(c)
+    ac_labels_new = ['ac_c' + str(c) + '_' + str(i) for i in range(num_parcels)]
+    df_node_ac_temp = pd.DataFrame(index = df.index, columns = ac_labels_new)
+    
+    # fc stored as 3d matrix, subjects of 3rd dim
+    AC = np.zeros((df.shape[0], num_parcels))
+    for (i, (index, row)) in enumerate(df.iterrows()):
+        AC[i,:] = ave_control(A_out[:,:,i], c = c)
+
+    df_node_ac_temp.loc[:,ac_labels_new] = AC
+    df_node_ac_overc = pd.concat((df_node_ac_overc, df_node_ac_temp), axis = 1)
+
+
+# # Save out raw data
+
+# In[29]:
+
+
+print(df_node.isna().any().any())
+print(df_node_ac_overc.isna().any().any())
+
+
+# In[30]:
+
+
 os.environ['MODELDIR']
 
 
-# In[29]:
+# In[31]:
 
 
 # Save out
 np.save(os.path.join(os.environ['MODELDIR'], 'A'), A)
 np.save(os.path.join(os.environ['MODELDIR'], 'A_out'), A_out)
+
 df_node.to_csv(os.path.join(os.environ['MODELDIR'], 'df_node_base.csv'))
+df_node_ac_overc.to_csv(os.path.join(os.environ['MODELDIR'], 'df_node_ac_overc_base.csv'))
+
 df.to_csv(os.path.join(os.environ['MODELDIR'], 'df_pheno.csv'))
 
 
-# ## Export for prediction
+# # Export for prediction
 
-# In[30]:
+# ## Normalize
+
+# ### Covariates
+
+# In[32]:
 
 
+covs = ['ageAtScan1', 'mprage_antsCT_vol_TBV', 'dti64MeanRelRMS', 'network_density', 'streamline_count']
+
+
+# In[33]:
+
+
+rank_r = np.zeros(len(covs),)
+
+for i, cov in enumerate(covs):
+    x = rank_int(df.loc[:,cov])
+    rank_r[i] = sp.stats.spearmanr(df.loc[:,cov],x)[0]
+    df.loc[:,cov] = x
+
+print(np.sum(rank_r < 0.99))
+
+
+# ### Node features
+
+# In[34]:
+
+
+rank_r = np.zeros(df_node.shape[1],)
+
+for i, col in enumerate(df_node.columns):
+    x = rank_int(df_node.loc[:,col])
+    rank_r[i] = sp.stats.spearmanr(df_node.loc[:,col],x)[0]
+    df_node.loc[:,col] = x
+
+print(np.sum(rank_r < .99))
+
+
+# In[35]:
+
+
+rank_r = np.zeros(df_node_ac_overc.shape[1],)
+
+for i, col in enumerate(df_node_ac_overc.columns):
+    x = rank_int(df_node_ac_overc.loc[:,col])
+    rank_r[i] = sp.stats.spearmanr(df_node_ac_overc.loc[:,col],x)[0]
+    df_node_ac_overc.loc[:,col] = x
+
+print(np.sum(rank_r < .99))
+
+
+# In[36]:
+
+
+covs = ['ageAtScan1', 'sex', 'mprage_antsCT_vol_TBV', 'dti64MeanRelRMS']
 phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear']
-# phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear',
-#          'F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy', 'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
-#           'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency']
-# phenos = ['F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy', 'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
-#           'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency']
+# phenos = [s + '_norm' for s in phenos]
+print(phenos)
 
 
-# In[31]:
+# In[37]:
 
 
 # Create subdirectory for specific normative model -- labeled according to parcellation/resolution choices and covariates
@@ -350,9 +431,47 @@ print(outdir)
 if not os.path.exists(outdir): os.mkdir(outdir);
 
 
-# In[32]:
+# In[38]:
 
 
 df_node.to_csv(os.path.join(outdir, 'X.csv'))
+df_node_ac_overc.to_csv(os.path.join(outdir, 'X_ac_c.csv'))
 df.loc[:,phenos].to_csv(os.path.join(outdir, 'y.csv'))
+df.loc[:,covs].to_csv(os.path.join(outdir, 'c.csv'))
+
+
+# In[39]:
+
+
+covs = ['ageAtScan1', 'sex', 'mprage_antsCT_vol_TBV', 'dti64MeanRelRMS', 'streamline_count']
+
+
+# In[40]:
+
+
+df.loc[:,covs].to_csv(os.path.join(outdir, 'c_sc.csv'))
+
+
+# In[41]:
+
+
+# phenos = ['F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy', 'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
+#           'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency']
+
+
+# In[42]:
+
+
+# # Create subdirectory for specific normative model -- labeled according to parcellation/resolution choices and covariates
+# outdir = os.path.join(os.environ['MODELDIR'], 'predict_cog')
+# print(outdir)
+# if not os.path.exists(outdir): os.mkdir(outdir);
+
+
+# In[43]:
+
+
+# df_node.to_csv(os.path.join(outdir, 'X.csv'))
+# df.loc[:,phenos].to_csv(os.path.join(outdir, 'y.csv'))
+# df.loc[:,covs].to_csv(os.path.join(outdir, 'c.csv'))
 
