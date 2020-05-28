@@ -29,7 +29,7 @@ plt.rcParams['svg.fonttype'] = 'none'
 sys.path.append('/Users/lindenmp/Dropbox/Work/ResProjects/neurodev_cs_predictive/code/func/')
 from proj_environment import set_proj_env
 sys.path.append('/Users/lindenmp/Dropbox/Work/git/pyfunc/')
-from func import my_get_cmap
+from func import my_get_cmap, rank_int
 
 
 # In[3]:
@@ -152,7 +152,9 @@ print('There are', age_unique.shape[0], 'unique age points')
 # In[12]:
 
 
-phenos = ('Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear')
+phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear',
+          'F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy', 'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
+          'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency']
 print(phenos)
 
 
@@ -160,28 +162,43 @@ print(phenos)
 
 
 for pheno in phenos:
-    # normalize regional metric
-    x = sp.stats.yeojohnson(df.loc[:,pheno])[0]
-    # store normalized version
-    df.loc[:,pheno + '_norm'] = x
+    if df.loc[:,pheno].isna().any():
+        print('NaN replacement: ', pheno)
+        x = np.nanmedian(df.loc[:,pheno])
+        df.loc[df.loc[:,pheno].isna(),pheno] = x
 
 
 # In[14]:
 
 
-phenos_norm = [s + '_norm' for s in phenos]
-print(phenos_norm)
+rank_r = np.zeros(len(phenos),)
+
+for i, pheno in enumerate(phenos):
+    # normalize regional metric
+#     x = sp.stats.yeojohnson(df.loc[:,pheno])[0]
+    x = rank_int(df.loc[:,pheno])
+    # check if rank order is preserved
+    rank_r[i] = sp.stats.spearmanr(df.loc[:,pheno],x)[0]
+    # store normalized version
+    df.loc[:,pheno] = x
+
+print(np.sum(rank_r < 1))
+
+
+# In[15]:
+
+
+df.loc[:,phenos].var()
 
 
 # ## Export
 
-# In[15]:
+# In[16]:
 
 
 header = ['ageAtScan1', 'ageAtScan1_Years','sex','race2','handednessv2', 'restProtocolValidationStatus', 'restExclude',
           'dti64MeanAbsRMS','dti64MeanRelRMS','dti64MaxAbsRMS','dti64MaxRelRMS','mprage_antsCT_vol_TBV', 'averageManualRating',
           'Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear',
-          'Overall_Psychopathology_norm','Psychosis_Positive_norm','Psychosis_NegativeDisorg_norm','AnxiousMisery_norm','Externalizing_norm','Fear_norm',
           'F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy', 'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
           'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency']
 df.to_csv(os.path.join(os.environ['TRTEDIR'], 'df_pheno.csv'), columns = header)
@@ -189,7 +206,7 @@ df.to_csv(os.path.join(os.environ['TRTEDIR'], 'df_pheno.csv'), columns = header)
 
 # # Plots
 
-# In[16]:
+# In[17]:
 
 
 if not os.path.exists(os.environ['FIGDIR']): os.makedirs(os.environ['FIGDIR'])
@@ -204,13 +221,19 @@ phenos_label = ('Overall Psychopathology','Psychosis (Positive)','Psychosis (Neg
 
 # ## Age
 
-# In[17]:
+# In[18]:
 
 
 df['sex'].unique()
 
 
-# In[18]:
+# In[19]:
+
+
+(np.sum(df.loc[:,'sex'] == 1)/df.shape[0]) * 100
+
+
+# In[20]:
 
 
 f, axes = plt.subplots(1,2)
@@ -242,7 +265,7 @@ f.savefig('age_distributions.svg', dpi = 300, bbox_inches = 'tight', pad_inches 
 
 # ## Phenotype distributions over train/test
 
-# In[19]:
+# In[21]:
 
 
 df_rc = pd.melt(df, value_vars = phenos)
@@ -258,25 +281,9 @@ ax.set_xlabel('Phenotype score')
 f.savefig('phenos_distributions.svg', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
 
 
-# In[20]:
-
-
-df_rc = pd.melt(df, value_vars = phenos_norm)
-
-f, ax = plt.subplots()
-f.set_figwidth(2.5)
-f.set_figheight(4)
-ax = sns.violinplot(y='variable', x='value', data=df_rc, split=True, scale='width', inner = 'quartile', orient = 'h')
-# ax.get_legend().remove()
-ax.set_yticklabels(phenos_label_short)
-ax.set_ylabel('Psychopathology phenotypes')
-ax.set_xlabel('Phenotype score')
-f.savefig('phenos_distributions.svg', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
-
-
 # ### Export sample for FC gradients
 
-# In[21]:
+# In[22]:
 
 
 # 4) rs-fMRI exclusion
@@ -285,7 +292,7 @@ df = df[df['restExclude'] == 0]
 print('N after rs-fMRI exclusion:', df.shape[0])
 
 
-# In[22]:
+# In[23]:
 
 
 df.to_csv(os.path.join(os.environ['TRTEDIR'], 'df_gradients.csv'), columns = header)
