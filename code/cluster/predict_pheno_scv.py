@@ -159,11 +159,6 @@ def cross_val_score_nuis(X, y, c, my_cv, reg, my_scorer, c_y = None):
 
 
 def run_reg_scv(X, y, c, reg, param_grid, n_splits = 10, scoring = 'r2', run_perm = False):
-    # NaN check
-    if y.isna().any():
-        print('Dropping NaNs: ', y.isna().sum())
-        X = X.loc[~y.isna(),:]
-        y = y.loc[~y.isna()]
     
     pipe = Pipeline(steps=[('standardize', StandardScaler()),
                            ('reg', reg)])
