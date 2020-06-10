@@ -114,11 +114,6 @@ def run_reg_ncv(X, y, reg, param_grid, n_splits = 10, scoring = 'r2'):
     return grid, nested_score
 
 def reg_ncv_wrapper(X, y, alg = 'krr_rbf', seed = 0, scoring = 'r2'):
-    # NaN check
-    if y.isna().any():
-        print('Dropping NaNs: ', y.isna().sum())
-        X = X.loc[~y.isna(),:]
-        y = y.loc[~y.isna()]
         
     # get regression estimator
     regs, param_grids = get_reg()
