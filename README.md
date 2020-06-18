@@ -7,7 +7,7 @@
     conda activate neurodev_cs_predictive
 
     # Essentials
-    pip install jupyterlab ipython pandas numpy seaborn matplotlib nibabel glob3 nilearn
+    pip install jupyterlab ipython pandas numpy seaborn matplotlib nibabel glob3 nilearn ipywidgets
     pip install jupyter_contrib_nbextensions && jupyter contrib nbextension install
 
 	# Statistics
@@ -18,6 +18,7 @@
 	pip install PyQt5
 	jupyter nbextension install --py mayavi --user
 	jupyter nbextension enable --py mayavi --user
+	jupyter nbextension enable --py widgetsnbextension
 	pip install pysurfer
 
     cd /Users/lindenmp/Dropbox/Work/ResProjects/neurodev_cs_predictive
