@@ -11,7 +11,7 @@
     pip install jupyter_contrib_nbextensions && jupyter contrib nbextension install
 
 	# Statistics
-	pip install scipy statsmodels sklearn pingouin pygam brainspace
+	pip install scipy statsmodels sklearn pingouin pygam brainspace shap
 
 	# Pysurfer for plotting
 	pip install mayavi
