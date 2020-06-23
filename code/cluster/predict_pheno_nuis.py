@@ -77,34 +77,23 @@ def shuffle_data(X, y, c, seed = 0):
     return X_shuf, y_shuf, c_shuf
 
 
-def get_reg(num_params = 10):
-    regs = {'rr': Ridge(max_iter = 100000),
-            'lr': Lasso(max_iter = 100000),
+def get_reg():
+    regs = {'rr': Ridge(),
+            'lr': Lasso(),
             'krr_lin': KernelRidge(kernel='linear'),
             'krr_rbf': KernelRidge(kernel='rbf'),
-            # 'svr_lin': LinearSVR(max_iter=100000),
             'svr_lin': SVR(kernel='linear'),
             'svr_rbf': SVR(kernel='rbf')
             }
-    
-    # From the sklearn docs, gamma defaults to 1/n_features. In my cases that will be either 1/400 features = 0.0025 or 1/200 = 0.005.
-    # I'll set gamma to same range as alpha then [0.001 to 1] - this way, the defaults will be included in the gridsearch
-    param_grids = {'rr': {'reg__alpha': np.logspace(0, -3, num_params)},
-                    'lr': {'reg__alpha': np.logspace(0, -3, num_params)},
-                   'krr_lin': {'reg__alpha': np.logspace(0, -3, num_params)},
-                   'krr_rbf': {'reg__alpha': np.logspace(0, -3, num_params), 'reg__gamma': np.logspace(0, -3, num_params)},
-                    'svr_lin': {'reg__C': np.logspace(0, 4, num_params)},
-                    'svr_rbf': {'reg__C': np.logspace(0, 4, num_params), 'reg__gamma': np.logspace(0, -3, num_params)}
-                    }
-    
-    return regs, param_grids
+
+    return regs
 
 
 def get_cv(y, n_splits = 10):
 
     my_cv = []
 
-    kf = KFold(n_splits = 10, shuffle = False)
+    kf = KFold(n_splits = n_splits, shuffle = False)
 
     for train_idx, test_idx in kf.split(y):
         my_cv.append( (train_idx, test_idx) )
@@ -112,9 +101,10 @@ def get_cv(y, n_splits = 10):
     return my_cv
 
 
-def cross_val_score_nuis(X, y, c, my_cv, reg, my_scorer, c_y = None):
+def cross_val_score_nuis(X, y, c, my_cv, reg, my_scorer):
     
     accuracy = np.zeros(len(my_cv),)
+    y_pred_out = np.zeros(y.shape)
 
     for k in np.arange(len(my_cv)):
         tr = my_cv[k][0]
@@ -122,37 +112,36 @@ def cross_val_score_nuis(X, y, c, my_cv, reg, my_scorer, c_y = None):
 
         # Split into train test
         X_train = X.iloc[tr,:]; X_test = X.iloc[te,:]
-        y_train = y.iloc[tr].values.reshape(-1,1); y_test = y.iloc[te].values.reshape(-1,1)
+        y_train = y.iloc[tr]; y_test = y.iloc[te]
         c_train = c.iloc[tr,:]; c_test = c.iloc[te,:]
-        if c_y is not None: c_y_train = c_y.iloc[tr,:]; c_y_test = c_y.iloc[te,:]
 
         # standardize predictors
         sc = StandardScaler(); sc.fit(X_train); X_train = sc.transform(X_train); X_test = sc.transform(X_test)
+        X_train = pd.DataFrame(data = X_train, index = X.iloc[tr,:].index, columns = X.iloc[tr,:].columns)
+        X_test = pd.DataFrame(data = X_test, index = X.iloc[te,:].index, columns = X.iloc[te,:].columns)
 
         # standardize covariates
         sc = StandardScaler(); sc.fit(c_train); c_train = sc.transform(c_train); c_test = sc.transform(c_test)
-        if c_y is not None: sc = StandardScaler(); sc.fit(c_y_train); c_y_train = sc.transform(c_y_train); c_y_test = sc.transform(c_y_test)
+        c_train = pd.DataFrame(data = c_train, index = c.iloc[tr,:].index, columns = c.iloc[tr,:].columns)
+        c_test = pd.DataFrame(data = c_test, index = c.iloc[te,:].index, columns = c.iloc[te,:].columns)
 
         # regress nuisance (X)
-        nuis_reg = LinearRegression(); nuis_reg.fit(c_train, X_train)
+        # nuis_reg = LinearRegression(); nuis_reg.fit(c_train, X_train)
+        nuis_reg = KernelRidge(kernel='rbf'); nuis_reg.fit(c_train, X_train)
         X_pred = nuis_reg.predict(c_train); X_train = X_train - X_pred
         X_pred = nuis_reg.predict(c_test); X_test = X_test - X_pred
 
-        # regress nuisance (y)
-        if c_y is None:  
-            nuis_reg = LinearRegression(); nuis_reg.fit(c_train, y_train)
-            y_pred = nuis_reg.predict(c_train); y_train = y_train - y_pred
-            y_pred = nuis_reg.predict(c_test); y_test = y_test - y_pred
-        elif c_y is not None:
-            nuis_reg = LinearRegression(); nuis_reg.fit(c_y_train, y_train)
-            y_pred = nuis_reg.predict(c_y_train); y_train = y_train - y_pred
-            y_pred = nuis_reg.predict(c_y_test); y_test = y_test - y_pred
+        # # regress nuisance (y)
+        # nuis_reg = LinearRegression(); nuis_reg.fit(c_train, y_train)
+        # nuis_reg = KernelRidge(kernel='rbf'); nuis_reg.fit(c_train, y_train)
+        # y_pred = nuis_reg.predict(c_train); y_train = y_train - y_pred
+        # y_pred = nuis_reg.predict(c_test); y_test = y_test - y_pred
 
         reg.fit(X_train, y_train)
         accuracy[k] = my_scorer(reg, X_test, y_test)
+        y_pred_out[te] = reg.predict(X_test)
         
-    return accuracy
-
+    return accuracy, y_pred_out
 
 
 def run_reg(X, y, c, reg, my_scorer, n_splits = 10, seed = 0):
@@ -161,9 +150,9 @@ def run_reg(X, y, c, reg, my_scorer, n_splits = 10, seed = 0):
 
     my_cv = get_cv(y_shuf, n_splits = n_splits)
 
-    accuracy = cross_val_score_nuis(X = X_shuf, y = y_shuf, c = c_shuf, my_cv = my_cv, reg = reg, my_scorer = my_scorer)
+    accuracy, y_pred_out = cross_val_score_nuis(X = X_shuf, y = y_shuf, c = c_shuf, my_cv = my_cv, reg = reg, my_scorer = my_scorer)
 
-    return accuracy
+    return accuracy, y_pred_out
 
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -200,23 +189,27 @@ elif score == 'mae':
     my_scorer = make_scorer(mean_absolute_error, greater_is_better = False)
 
 # prediction
-regs, param_grids = get_reg()
+regs = get_reg()
 
-num_random_splits = 50
+num_random_splits = 100
 
 accuracy_mean = np.zeros(num_random_splits)
 accuracy_std = np.zeros(num_random_splits)
+y_pred_out_repeats = np.zeros((y.shape[0],num_random_splits))
 
 for i in np.arange(0,num_random_splits):
-    accuracy = run_reg(X = X, y = y, c = c, reg = regs[alg], my_scorer = my_scorer, seed = i)
+    accuracy, y_pred_out = run_reg(X = X, y = y, c = c, reg = regs[alg], my_scorer = my_scorer, seed = i)
     accuracy_mean[i] = accuracy.mean()
     accuracy_std[i] = accuracy.std()
+    y_pred_out_repeats[:,i] = y_pred_out
+
 # --------------------------------------------------------------------------------------------------------------------
 
 # --------------------------------------------------------------------------------------------------------------------
 # outputs
 np.savetxt(os.path.join(outdir,'accuracy_mean.txt'), accuracy_mean)
 np.savetxt(os.path.join(outdir,'accuracy_std.txt'), accuracy_std)
+np.savetxt(os.path.join(outdir,'y_pred_out_repeats.txt'), y_pred_out_repeats)
 
 # --------------------------------------------------------------------------------------------------------------------
 
