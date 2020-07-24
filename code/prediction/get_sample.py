@@ -35,13 +35,16 @@ from func import my_get_cmap, rank_int
 # In[3]:
 
 
-exclude_str = 't1Exclude'
-extra_str = '_consist' # '_vol_norm' '_noboxcox' '_consist'
+exclude_str = 't1Exclude' # 't1Exclude' 'fsFinalExclude'
+extra_str = '' # '_consist'
 edge_weight = 'streamlineCount' # 'streamlineCount' 'fa' 'mean_streamlineLength' 'adc'
+parc_str = 'schaefer' # 'schaefer' 'lausanne'
 parc_scale = 200
+parc_variant = 'orig' # 'orig' 'cortex_only'
 parcel_names, parcel_loc, drop_parcels, num_parcels, yeo_idx, yeo_labels = set_proj_env(exclude_str = exclude_str,
-                                                                                        parc_scale = parc_scale,
-                                                                                       extra_str = extra_str, edge_weight = edge_weight)
+                                                                                        parc_str = parc_str, parc_scale = parc_scale,
+                                                                                       extra_str = extra_str, edge_weight = edge_weight,
+                                                                                       parc_variant = parc_variant)
 
 
 # ### Setup output directory
@@ -152,9 +155,10 @@ print('There are', age_unique.shape[0], 'unique age points')
 # In[12]:
 
 
-phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear',
-          'F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy', 'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
-          'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency']
+# phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear',
+#           'F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy', 'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
+#           'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency']
+phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg']
 print(phenos)
 
 
@@ -196,11 +200,14 @@ df.loc[:,phenos].var()
 # In[16]:
 
 
-header = ['ageAtScan1', 'ageAtScan1_Years','sex','race2','handednessv2', 'restProtocolValidationStatus', 'restExclude',
+# header = ['squeakycleanExclude','ageAtScan1', 'ageAtScan1_Years','sex','race2','handednessv2', 'restProtocolValidationStatus', 'restExclude',
+#           'dti64MeanAbsRMS','dti64MeanRelRMS','dti64MaxAbsRMS','dti64MaxRelRMS','mprage_antsCT_vol_TBV', 'averageManualRating',
+#           'Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear',
+#           'F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy', 'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
+#           'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency']
+header = ['squeakycleanExclude','ageAtScan1', 'ageAtScan1_Years','sex','race2','handednessv2', 'restProtocolValidationStatus', 'restExclude',
           'dti64MeanAbsRMS','dti64MeanRelRMS','dti64MaxAbsRMS','dti64MaxRelRMS','mprage_antsCT_vol_TBV', 'averageManualRating',
-          'Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear',
-          'F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy', 'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
-          'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency']
+          'Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg']
 df.to_csv(os.path.join(os.environ['TRTEDIR'], 'df_pheno.csv'), columns = header)
 
 
@@ -215,8 +222,13 @@ sns.set(style='white', context = 'paper', font_scale = 1)
 cmap = my_get_cmap('pair')
 
 labels = ['Train', 'Test']
-phenos_label_short = ('Ov. Psych.', 'Psy. (pos.)', 'Psy. (neg.)', 'Anx.-mis.', 'Ext.', 'Fear')
-phenos_label = ('Overall Psychopathology','Psychosis (Positive)','Psychosis (Negative)','Anxious-Misery','Externalizing','Fear')
+# phenos_label_short = ['Ov. Psych.', 'Psy. (pos.)', 'Psy. (neg.)', 'Anx.-mis.', 'Ext.', 'Fear',
+#                       'F1_ECRA', 'F2_SCA', 'F3_MA', 'F1_CRE', 'F2_ME', 'F3_EE', 'F4_SCE']
+# phenos_label = ['Overall Psychopathology','Psychosis (Positive)','Psychosis (Negative)','Anxious-Misery','Externalizing','Fear',
+#                 'F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy', 'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
+#                 'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency']
+phenos_label_short = ['Ov. Psych.', 'Psy. (pos.)', 'Psy. (neg.)']
+phenos_label = ['Overall Psychopathology','Psychosis (Positive)','Psychosis (Negative)']
 
 
 # ## Age
