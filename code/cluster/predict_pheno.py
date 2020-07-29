@@ -75,21 +75,20 @@ def shuffle_data(X, y, seed = 0):
     return X_shuf, y_shuf
 
 def get_reg(num_params = 10):
-    regs = {'rr': Ridge(max_iter = 100000),
-            'lr': Lasso(max_iter = 100000),
+    regs = {'rr': Ridge(),
+            'lr': Lasso(),
             'krr_lin': KernelRidge(kernel='linear'),
             'krr_rbf': KernelRidge(kernel='rbf'),
-            # 'svr_lin': LinearSVR(max_iter=100000),
             'svr_lin': SVR(kernel='linear'),
             'svr_rbf': SVR(kernel='rbf')
             }
     
     # From the sklearn docs, gamma defaults to 1/n_features. In my cases that will be either 1/400 features = 0.0025 or 1/200 = 0.005.
     # I'll set gamma to same range as alpha then [0.001 to 1] - this way, the defaults will be included in the gridsearch
-    param_grids = {'rr': {'reg__alpha': np.logspace(0, -3, num_params)},
-                    'lr': {'reg__alpha': np.logspace(0, -3, num_params)},
-                   'krr_lin': {'reg__alpha': np.logspace(0, -3, num_params)},
-                   'krr_rbf': {'reg__alpha': np.logspace(0, -3, num_params), 'reg__gamma': np.logspace(0, -3, num_params)},
+    param_grids = {'rr': {'reg__alpha': np.logspace(0.5, -1, num_params)},
+                    'lr': {'reg__alpha': np.logspace(0.5, -1, num_params)},
+                   'krr_lin': {'reg__alpha': np.logspace(0.5, -1, num_params)},
+                   'krr_rbf': {'reg__alpha': np.logspace(0.5, -1, num_params)},
                     'svr_lin': {'reg__C': np.logspace(0, 4, num_params)},
                     'svr_rbf': {'reg__C': np.logspace(0, 4, num_params), 'reg__gamma': np.logspace(0, -3, num_params)}
                     }
