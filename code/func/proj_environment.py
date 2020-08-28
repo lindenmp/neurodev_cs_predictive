@@ -7,21 +7,23 @@ import os, sys
 import numpy as np
 
 def set_proj_env(dataset = 'PNC', train_test_str = 'squeakycleanExclude', exclude_str = 't1Exclude',
-    parc_str = 'schaefer', parc_scale = 400, parc_variant = 'orig', edge_weight = 'streamlineCount',
+    parc_str = 'schaefer', parc_scale = 200, parc_variant = 'orig', edge_weight = 'streamlineCount',
     primary_covariate = 'ageAtScan1_Years', extra_str = ''):
 
     # Project root directory
-    projdir = '/Users/lindenmp/Dropbox/Work/ResProjects/neurodev_cs_predictive'; os.environ['PROJDIR'] = projdir
+    projdir = '/Users/lindenmp/Google-Drive-Penn/work/research_projects/neurodev_cs_predictive'; os.environ['PROJDIR'] = projdir
     
     # Derivatives for dataset --> root directory for the dataset under analysis
-    derivsdir = os.path.join('/Volumes/ResProjects_2TB/ResData/PNC/'); os.environ['DERIVSDIR'] = derivsdir
+    derivsdir = os.path.join('/Volumes/work_ssd/research_data/PNC/'); os.environ['DERIVSDIR'] = derivsdir
 
     # Parcellation specifications
     # Names of parcels
     if parc_str == 'schaefer': parcel_names = np.genfromtxt(os.path.join(projdir, 'figs_support/labels/schaefer' + str(parc_scale) + 'NodeNames.txt'), dtype='str')
+    if parc_str == 'lausanne': parcel_names = np.genfromtxt(os.path.join(projdir, 'figs_support/labels/lausanne_' + str(parc_scale) + '.txt'), dtype='str')
 
     # vector describing whether rois belong to cortex (1) or subcortex (0)
     if parc_str == 'schaefer': parcel_loc = np.loadtxt(os.path.join(projdir, 'figs_support/labels/schaefer' + str(parc_scale) + 'NodeNames_loc.txt'), dtype='int')
+    if parc_str == 'lausanne': parcel_loc = np.loadtxt(os.path.join(projdir, 'figs_support/labels/lausanne_' + str(parc_scale) + '_loc.txt'), dtype='int')
     
     if parc_variant == 'no_bs':
         drop_parcels = np.where(parcel_loc == 2)
@@ -42,12 +44,31 @@ def set_proj_env(dataset = 'PNC', train_test_str = 'squeakycleanExclude', exclud
 
         os.environ['CONN_STR'] = 'connectivity'
 
-        rstsdir = os.path.join(derivsdir, 'processedData/rest/restNetwork_schaefer400/Schaefer400Timeseries'); os.environ['RSTSDIR'] = rstsdir
-        rsts_name_tmp = 'scanid_Schaefer' + str(parc_scale) + '_ts.1D'; os.environ['RSTS_NAME_TMP'] = rsts_name_tmp
+        rstsdir = os.path.join(derivsdir, 'processedData/restbold/restbold_201607151621'); os.environ['RSTSDIR'] = rstsdir
+        if parc_scale == 200:
+            rsts_name_tmp = 'bblid/*xscanid/net/Schaefer' + str(parc_scale) + 'PNC/bblid_*xscanid_Schaefer' + str(parc_scale) + 'PNC_ts.1D'; os.environ['RSTS_NAME_TMP'] = rsts_name_tmp
+        elif parc_scale == 400:
+            rsts_name_tmp = 'bblid/*xscanid/net/SchaeferPNC/bblid_*xscanid_SchaeferPNC_ts.1D'; os.environ['RSTS_NAME_TMP'] = rsts_name_tmp
+    elif parc_str == 'lausanne':
+        
+        # Structural connectivity derivatives
+        scdir = os.path.join(derivsdir, 'processedData/diffusion/deterministic_dec2016', edge_weight, 'LausanneScale' + str(parc_scale)); os.environ['SCDIR'] = scdir
+        sc_name_tmp = 'scanid_' + edge_weight + '_LausanneScale' + str(parc_scale) + '.mat'; os.environ['SC_NAME_TMP'] = sc_name_tmp
+        
+        os.environ['CONN_STR'] = 'connectivity'
+
+        rstsdir = os.path.join(derivsdir, 'processedData/restbold/restbold_201607151621'); os.environ['RSTSDIR'] = rstsdir
+        rsts_name_tmp = 'bblid/*xscanid/net/Lausanne' + str(parc_scale) + '/bblid_*xscanid_Lausanne' + str(parc_scale) + '_ts.1D'; os.environ['RSTS_NAME_TMP'] = rsts_name_tmp
 
     # Normative dir based on the train/test split --> specific combinations of parcellation/number of parcels/edge weight come off this directory
     # This is the first of the output directories for the project and is created by get_train_test.ipynb if it doesn't exist
-    trtedir = os.path.join(projdir, 'analysis/normative', exclude_str, train_test_str); os.environ['TRTEDIR'] = trtedir
+    # trtedir = os.path.join(projdir, 'analysis', exclude_str, train_test_str); os.environ['TRTEDIR'] = trtedir
+    trtedir = os.path.join(projdir, 'analysis', exclude_str); os.environ['TRTEDIR'] = trtedir
+    # trtedir = os.path.join(projdir, 'analysis_altcontrol', exclude_str); os.environ['TRTEDIR'] = trtedir
+
+    
+    # trtedir = os.path.join(projdir, 'analysis_int', exclude_str); os.environ['TRTEDIR'] = trtedir
+    # trtedir = os.path.join(projdir, 'analysis_int_altcontrol', exclude_str); os.environ['TRTEDIR'] = trtedir
 
     # Subdirector in normative dir (TRTEDIR) that designates combination of parcellation/number of parcels/edge weight
     modeldir_base = os.path.join(trtedir, parc_str + '_' + str(num_parcels) + '_' + edge_weight); os.environ['MODELDIR_BASE'] = modeldir_base
@@ -68,5 +89,7 @@ def set_proj_env(dataset = 'PNC', train_test_str = 'squeakycleanExclude', exclud
         yeo_idx = np.loadtxt(os.path.join(projdir, 'figs_support/labels/yeo17netlabelsSchaefer' + str(parc_scale) + '.txt')).astype(int)
         yeo_labels = ('Vis. A', 'Vis. B', 'Som. Mot. A', 'Som. Mot. B', 'Dors. Attn. A', 'Dors. Attn. B', 'Sal. Vent. Attn. A', 'Sal. Vent. Attn. B',
                     'Limbic A', 'Limbic B', 'Cont. A', 'Cont. B', 'Cont. C', 'Default A', 'Default B', 'Default C', 'Temp. Par.')
+        # yeo_idx = np.loadtxt(os.path.join(projdir, 'figs_support/labels/yeo17netlabelsSchaefer' + str(parc_scale) + '_downsampled.txt')).astype(int)
+        # yeo_labels = ('Vis', 'Som. Mot.', 'Dors. Attn.', 'Sal. Vent. Attn.', 'Limbic', 'Cont.', 'Default', 'Temp. Par.')
 
     return parcel_names, parcel_loc, drop_parcels, num_parcels, yeo_idx, yeo_labels

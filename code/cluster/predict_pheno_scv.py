@@ -66,21 +66,20 @@ def root_mean_squared_error(y_true, y_pred):
 
 
 def get_reg(num_params = 10):
-    regs = {'rr': Ridge(max_iter = 100000),
-            'lr': Lasso(max_iter = 100000),
+    regs = {'rr': Ridge(),
+            'lr': Lasso(),
             'krr_lin': KernelRidge(kernel='linear'),
             'krr_rbf': KernelRidge(kernel='rbf'),
-            # 'svr_lin': LinearSVR(max_iter=100000),
             'svr_lin': SVR(kernel='linear'),
             'svr_rbf': SVR(kernel='rbf')
             }
     
     # From the sklearn docs, gamma defaults to 1/n_features. In my cases that will be either 1/400 features = 0.0025 or 1/200 = 0.005.
     # I'll set gamma to same range as alpha then [0.001 to 1] - this way, the defaults will be included in the gridsearch
-    param_grids = {'rr': {'reg__alpha': np.logspace(0, -3, num_params)},
-                    'lr': {'reg__alpha': np.logspace(0, -3, num_params)},
-                   'krr_lin': {'reg__alpha': np.logspace(0, -3, num_params)},
-                   'krr_rbf': {'reg__alpha': np.logspace(0, -3, num_params), 'reg__gamma': np.logspace(0, -3, num_params)},
+    param_grids = {'rr': {'reg__alpha': np.logspace(0.5, -1, num_params)},
+                    'lr': {'reg__alpha': np.logspace(0.5, -1, num_params)},
+                   'krr_lin': {'reg__alpha': np.logspace(0.5, -1, num_params)},
+                   'krr_rbf': {'reg__alpha': np.logspace(0.5, -1, num_params)},
                     'svr_lin': {'reg__C': np.logspace(0, 4, num_params)},
                     'svr_rbf': {'reg__C': np.logspace(0, 4, num_params), 'reg__gamma': np.logspace(0, -3, num_params)}
                     }
@@ -125,31 +124,42 @@ def cross_val_score_nuis(X, y, c, my_cv, reg, my_scorer, c_y = None):
 
         # Split into train test
         X_train = X.iloc[tr,:]; X_test = X.iloc[te,:]
-        y_train = y.iloc[tr].values.reshape(-1,1); y_test = y.iloc[te].values.reshape(-1,1)
+        y_train = y.iloc[tr]; y_test = y.iloc[te]
         c_train = c.iloc[tr,:]; c_test = c.iloc[te,:]
         if c_y is not None: c_y_train = c_y.iloc[tr,:]; c_y_test = c_y.iloc[te,:]
 
         # standardize predictors
         sc = StandardScaler(); sc.fit(X_train); X_train = sc.transform(X_train); X_test = sc.transform(X_test)
+        X_train = pd.DataFrame(data = X_train, index = X.iloc[tr,:].index, columns = X.iloc[tr,:].columns)
+        X_test = pd.DataFrame(data = X_test, index = X.iloc[te,:].index, columns = X.iloc[te,:].columns)
 
         # standardize covariates
         sc = StandardScaler(); sc.fit(c_train); c_train = sc.transform(c_train); c_test = sc.transform(c_test)
-        if c_y is not None: sc = StandardScaler(); sc.fit(c_y_train); c_y_train = sc.transform(c_y_train); c_y_test = sc.transform(c_y_test)
+        c_train = pd.DataFrame(data = c_train, index = c.iloc[tr,:].index, columns = c.iloc[tr,:].columns)
+        c_test = pd.DataFrame(data = c_test, index = c.iloc[te,:].index, columns = c.iloc[te,:].columns)
+
+        if c_y is not None:
+            sc = StandardScaler(); sc.fit(c_y_train); c_y_train = sc.transform(c_y_train); c_y_test = sc.transform(c_y_test)
+            c_y_train = pd.DataFrame(data = c_y_train, index = c.iloc[tr,:].index, columns = c.iloc[tr,:].columns)
+            c_y_test = pd.DataFrame(data = c_y_test, index = c.iloc[te,:].index, columns = c.iloc[te,:].columns)
 
         # regress nuisance (X)
-        nuis_reg = LinearRegression(); nuis_reg.fit(c_train, X_train)
+        # nuis_reg = LinearRegression(); nuis_reg.fit(c_train, X_train)
+        nuis_reg = KernelRidge(kernel='rbf'); nuis_reg.fit(c_train, X_train)
         X_pred = nuis_reg.predict(c_train); X_train = X_train - X_pred
         X_pred = nuis_reg.predict(c_test); X_test = X_test - X_pred
 
-        # regress nuisance (y)
-        if c_y is None:  
-            nuis_reg = LinearRegression(); nuis_reg.fit(c_train, y_train)
-            y_pred = nuis_reg.predict(c_train); y_train = y_train - y_pred
-            y_pred = nuis_reg.predict(c_test); y_test = y_test - y_pred
-        elif c_y is not None:
-            nuis_reg = LinearRegression(); nuis_reg.fit(c_y_train, y_train)
-            y_pred = nuis_reg.predict(c_y_train); y_train = y_train - y_pred
-            y_pred = nuis_reg.predict(c_y_test); y_test = y_test - y_pred
+        # # regress nuisance (y)
+        # if c_y is None:  
+        #     # nuis_reg = LinearRegression(); nuis_reg.fit(c_train, y_train)
+        #     nuis_reg = KernelRidge(kernel='rbf'); nuis_reg.fit(c_train, y_train)
+        #     y_pred = nuis_reg.predict(c_train); y_train = y_train - y_pred
+        #     y_pred = nuis_reg.predict(c_test); y_test = y_test - y_pred
+        # elif c_y is not None:
+        #     # nuis_reg = LinearRegression(); nuis_reg.fit(c_y_train, y_train)
+        #     nuis_reg = KernelRidge(kernel='rbf'); nuis_reg.fit(c_y_train, y_train)
+        #     y_pred = nuis_reg.predict(c_y_train); y_train = y_train - y_pred
+        #     y_pred = nuis_reg.predict(c_y_test); y_test = y_test - y_pred
 
         reg.fit(X_train, y_train)
         accuracy[k] = my_scorer(reg, X_test, y_test)
