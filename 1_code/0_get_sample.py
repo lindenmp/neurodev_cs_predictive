@@ -256,7 +256,7 @@ axes[1].set_xlabel('Sex')
 axes[1].set_xticks([0,0.5])
 axes[1].set_xticklabels(['Male', 'Female'])
 
-f.savefig('age_distributions.svg', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
+f.savefig('age_distributions.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
 
 
 # ## Symptom dimensions
@@ -274,7 +274,7 @@ ax = sns.violinplot(y='variable', x='value', data=df_rc, split=True, scale='widt
 ax.set_yticklabels(phenos_label_short)
 ax.set_ylabel('Psychopathology dimension')
 ax.set_xlabel('Score')
-f.savefig('symptoms_distributions.svg', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
+f.savefig('symptoms_distributions.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
 
 
 # ### Export sample for FC gradients
