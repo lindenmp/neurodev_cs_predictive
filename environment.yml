@@ -115,7 +115,7 @@ dependencies:
     - traits==6.1.1
     - traitsui==7.0.1
     - urllib3==1.25.10
-    - vtk==9.0.1
+    - vtk==8.1.2
     - wcwidth==0.2.5
     - webencodings==0.5.1
     - widgetsnbextension==3.5.1
