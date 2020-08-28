@@ -18,6 +18,10 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 plt.rcParams['svg.fonttype'] = 'none'
 
+# Extra
+from scipy.linalg import svd, schur
+from numpy.matlib import repmat
+
 def set_proj_env(parc_str = 'schaefer', parc_scale = 200, edge_weight = 'streamlineCount', extra_str = ''):
 
     # Project root directory
@@ -149,3 +153,45 @@ def rank_int(series, c=3.0/8):
     transformed = rank.apply(rank_to_normal, c=c, n=len(rank))
     
     return transformed
+
+
+def node_strength(A):
+    s = np.sum(A, axis = 0)
+
+    return s
+
+
+def ave_control(A, c = 1):
+    # FUNCTION:
+    #         Returns values of AVERAGE CONTROLLABILITY for each node in a
+    #         network, given the adjacency matrix for that network. Average
+    #         controllability measures the ease by which input at that node can
+    #         steer the system into many easily-reachable states.
+    #
+    # INPUT:
+    #         A is the structural (NOT FUNCTIONAL) network adjacency matrix, 
+    #         such that the simple linear model of dynamics outlined in the 
+    #         reference is an accurate estimate of brain state fluctuations. 
+    #         Assumes all values in the matrix are positive, and that the 
+    #         matrix is symmetric.
+    #
+    # OUTPUT:
+    #         Vector of average controllability values for each node
+    #
+    # Bassett Lab, University of Pennsylvania, 2016.
+    # Reference: Gu, Pasqualetti, Cieslak, Telesford, Yu, Kahn, Medaglia,
+    #            Vettel, Miller, Grafton & Bassett, Nature Communications
+    #            6:8414, 2015.
+
+    u, s, vt = svd(A) # singluar value decomposition
+    A = A/(c + s[0]) # Matrix normalization 
+    T, U = schur(A,'real') # Schur stability
+    midMat = np.multiply(U,U).transpose()
+    v = np.matrix(np.diag(T)).transpose()
+    N = A.shape[0]
+    P = np.diag(1 - np.matmul(v,v.transpose()))
+    P = repmat(P.reshape([N,1]), 1, N)
+    values = sum(np.divide(midMat,P))
+    
+    return values
+
