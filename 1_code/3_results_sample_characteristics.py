@@ -72,7 +72,6 @@ phenos_short = ['Ov. Psy.','Psy. (pos)','Psy. (neg)']
 if not os.path.exists(figdir): os.makedirs(figdir)
 os.chdir(figdir)
 sns.set(style='white', context = 'paper', font_scale = 1)
-# cmap = sns.color_palette("pastel", 3)
 cmap = my_get_cmap('pair')
 
 
