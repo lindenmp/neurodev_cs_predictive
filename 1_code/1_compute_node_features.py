@@ -259,8 +259,10 @@ print(df_node.isna().any().any())
 print(df_node_ac_overc.isna().any().any())
 
 
-# In[25]:
+# In[32]:
 
+
+np.save(os.path.join(storedir, 'A'), A)
 
 df_node.to_csv(os.path.join(storedir, 'df_node_base.csv'))
 df_node_ac_overc.to_csv(os.path.join(storedir, 'df_node_ac_overc_base.csv'))
