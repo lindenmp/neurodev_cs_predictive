@@ -26,27 +26,36 @@ plt.rcParams['svg.fonttype'] = 'none'
 # In[2]:
 
 
-sys.path.append('/Users/lindenmp/Dropbox/Work/ResProjects/neurodev_cs_predictive/code/func/')
-from proj_environment import set_proj_env
-sys.path.append('/Users/lindenmp/Dropbox/Work/git/pyfunc/')
-from func import node_strength, ave_control, modal_control, consistency_thresh, rank_int
+from sklearn.linear_model import LinearRegression
 
 
 # In[3]:
 
 
-exclude_str = 't1Exclude'
-extra_str = '_consist' # '_vol_norm' '_noboxcox' '_consist'
+sys.path.append('/Users/lindenmp/Google-Drive-Penn/work/research_projects/neurodev_cs_predictive/code/func/')
+from proj_environment import set_proj_env
+sys.path.append('/Users/lindenmp/Google-Drive-Penn/work/misc_projects/pyfunc/')
+from func import node_strength, ave_control, modal_control, consistency_thresh, rank_int, ave_control_alt, modal_control_alt
+
+
+# In[4]:
+
+
+exclude_str = 't1Exclude' # 't1Exclude' 'fsFinalExclude'
+extra_str = '' # '_consist'
 edge_weight = 'streamlineCount' # 'streamlineCount' 'fa' 'mean_streamlineLength' 'adc'
+parc_str = 'schaefer' # 'schaefer' 'lausanne'
 parc_scale = 200
+parc_variant = 'orig' # 'orig' 'cortex_only'
 parcel_names, parcel_loc, drop_parcels, num_parcels, yeo_idx, yeo_labels = set_proj_env(exclude_str = exclude_str,
-                                                                                        parc_scale = parc_scale,
-                                                                                       extra_str = extra_str, edge_weight = edge_weight)
+                                                                                        parc_str = parc_str, parc_scale = parc_scale,
+                                                                                       extra_str = extra_str, edge_weight = edge_weight,
+                                                                                       parc_variant = parc_variant)
 
 
 # ### Setup output directory
 
-# In[4]:
+# In[5]:
 
 
 print(os.environ['MODELDIR'])
@@ -55,22 +64,31 @@ if not os.path.exists(os.environ['MODELDIR']): os.makedirs(os.environ['MODELDIR'
 
 # ### Data processing options
 
-# In[5]:
+# In[6]:
 
 
-threshold = True
+if extra_str == '_consist':
+    threshold = True
+else:
+    threshold = False
+print(threshold)
+    
 vol_norm = False
+if 'altcontrol' in os.environ['MODELDIR']:
+    print('Using alt control code')
+else:
+    print('Using regular control code')
 
 
 # ## Load train/test .csv and setup node .csv
 
-# In[6]:
+# In[7]:
 
 
 os.path.join(os.environ['TRTEDIR'])
 
 
-# In[7]:
+# In[8]:
 
 
 # Load data
@@ -79,7 +97,7 @@ df.set_index(['bblid', 'scanid'], inplace = True)
 print(df.shape)
 
 
-# In[8]:
+# In[9]:
 
 
 # Missing data file for this subject only for schaefer 200
@@ -87,81 +105,30 @@ if parc_scale == 200:
     df.drop(labels = (112598, 5161), inplace=True)
 
 
-# In[9]:
+# In[10]:
 
 
 # output dataframe
-vol_labels = ['vol_' + str(i) for i in range(num_parcels)]
 str_labels = ['str_' + str(i) for i in range(num_parcels)]
 ac_labels = ['ac_' + str(i) for i in range(num_parcels)]
 mc_labels = ['mc_' + str(i) for i in range(num_parcels)]
 
-df_node = pd.DataFrame(index = df.index, columns = vol_labels + str_labels + ac_labels + mc_labels)
+df_node = pd.DataFrame(index = df.index, columns = str_labels + ac_labels + mc_labels)
 # df_node.insert(0, 'nuisance_sample', df['nuisance_sample'])
 
 print(df_node.shape)
 
 
-# ## Load in cortical volume
-
-# In[10]:
-
-
-# subject filter
-subj_filt = np.zeros((df.shape[0],)).astype(bool)
-
+# ## Load in structural connectivity matrices
 
 # In[11]:
 
 
-VOL = np.zeros((df.shape[0], num_parcels))
-
-for (i, (index, row)) in enumerate(df.iterrows()):
-    file_name = os.environ['VOL_NAME_TMP'].replace("bblid", str(index[0]))
-    file_name = file_name.replace("scanid", str(index[1]))
-    full_path = glob.glob(os.path.join(os.environ['VOLDIR'], file_name))
-    if i == 0: print(full_path)    
-    
-    if len(full_path) > 0:
-        img = nib.load(full_path[0])
-        v = np.array(img.dataobj)
-        v = v[v != 0]
-        unique_elements, counts_elements = np.unique(v, return_counts=True)
-        if len(unique_elements) == num_parcels:
-            VOL[i,:] = counts_elements
-        else:
-            print(str(index) + '. Warning: not all parcels present')
-            subj_filt[i] = True
-    elif len(full_path) == 0:
-        subj_filt[i] = True
-    
-df_node.loc[:,vol_labels] = VOL
-
-
-# In[12]:
-
-
-np.sum(subj_filt)
-
-
-# In[13]:
-
-
-if any(subj_filt):
-    df = df.loc[~subj_filt]
-    df_node = df_node.loc[~subj_filt]
-
-
-# ## Load in structural connectivity matrices
-
-# In[14]:
-
-
 # subject filter
 subj_filt = np.zeros((df.shape[0],)).astype(bool)
 
 
-# In[15]:
+# In[12]:
 
 
 A = np.zeros((num_parcels, num_parcels, df.shape[0]))
@@ -173,6 +140,9 @@ for (i, (index, row)) in enumerate(df.iterrows()):
     if len(full_path) > 0:
         mat_contents = sio.loadmat(full_path[0])
         a = mat_contents[os.environ['CONN_STR']]
+        if parc_str == 'lausanne' and parc_variant == 'cortex_only':
+            a = a[parcel_loc == 1,:]
+            a = a[:,parcel_loc == 1]
         A[:,:,i] = a
     elif len(full_path) == 0:
         print(file_name + ': NOT FOUND')
@@ -180,13 +150,13 @@ for (i, (index, row)) in enumerate(df.iterrows()):
         A[:,:,i] = np.full((num_parcels, num_parcels), np.nan)
 
 
-# In[16]:
+# In[13]:
 
 
 np.sum(subj_filt)
 
 
-# In[17]:
+# In[14]:
 
 
 if any(subj_filt):
@@ -198,7 +168,7 @@ print(df_node.shape)
 
 # ### Consistency thresholding
 
-# In[18]:
+# In[15]:
 
 
 if threshold:
@@ -209,7 +179,7 @@ else:
     A_out = A.copy()
 
 
-# In[19]:
+# In[16]:
 
 
 if threshold:
@@ -218,14 +188,14 @@ if threshold:
 
 # ### Check if any subjects have disconnected nodes in A matrix
 
-# In[20]:
+# In[17]:
 
 
 # subject filter
 subj_filt = np.zeros((df.shape[0],)).astype(bool)
 
 
-# In[21]:
+# In[18]:
 
 
 for i in range(A_out.shape[2]):
@@ -233,13 +203,13 @@ for i in range(A_out.shape[2]):
         subj_filt[i] = True
 
 
-# In[22]:
+# In[19]:
 
 
 np.sum(subj_filt)
 
 
-# In[23]:
+# In[20]:
 
 
 if any(subj_filt):
@@ -249,9 +219,21 @@ if any(subj_filt):
 print(df_node.shape)
 
 
+# In[21]:
+
+
+np.sum(df['averageManualRating'] == 2)
+
+
+# In[22]:
+
+
+np.sum(df['dti64QAManualScore'] == 2)
+
+
 # ### Get streamline count and network density
 
-# In[24]:
+# In[21]:
 
 
 A_c = np.zeros((A_out.shape[2],))
@@ -265,7 +247,7 @@ df.loc[:,'network_density'] = A_d
 
 # ### Normalize A by regional volume
 
-# In[25]:
+# In[22]:
 
 
 if vol_norm:
@@ -286,7 +268,7 @@ else:
 
 # ### Compute node metrics
 
-# In[26]:
+# In[23]:
 
 
 # fc stored as 3d matrix, subjects of 3rd dim
@@ -296,8 +278,13 @@ MC = np.zeros((df.shape[0], num_parcels))
 
 for (i, (index, row)) in enumerate(df.iterrows()):
     S[i,:] = node_strength(A_out[:,:,i])
-    AC[i,:] = ave_control(A_out[:,:,i])
-    MC[i,:] = modal_control(A_out[:,:,i])
+    if 'altcontrol' in os.environ['MODELDIR']:
+        AC[i,:] = ave_control_alt(A_out[:,:,i])
+        MC[i,:] = modal_control_alt(A_out[:,:,i])
+    else:
+        AC[i,:] = ave_control(A_out[:,:,i])
+        MC[i,:] = modal_control(A_out[:,:,i])
+
 
 df_node.loc[:,str_labels] = S
 df_node.loc[:,ac_labels] = AC
@@ -306,13 +293,18 @@ df_node.loc[:,mc_labels] = MC
 
 # ## Recalculate average control at different C params
 
-# In[27]:
+# In[24]:
 
 
-c_params = np.array([10, 100, 1000, 10000, 20000])
+if 'altcontrol' in os.environ['MODELDIR']:
+    c_params = np.linspace(0.75, 0.25, 3)
+else:
+    c_params = np.array([10, 100, 1000, 10000])
+
+c_params
 
 
-# In[28]:
+# In[25]:
 
 
 # output dataframe
@@ -326,7 +318,10 @@ for c in c_params:
     # fc stored as 3d matrix, subjects of 3rd dim
     AC = np.zeros((df.shape[0], num_parcels))
     for (i, (index, row)) in enumerate(df.iterrows()):
-        AC[i,:] = ave_control(A_out[:,:,i], c = c)
+        if 'altcontrol' in os.environ['MODELDIR']:
+            AC[i,:] = ave_control_alt(A_out[:,:,i], c = c)
+        else:
+            AC[i,:] = ave_control(A_out[:,:,i], c = c)
 
     df_node_ac_temp.loc[:,ac_labels_new] = AC
     df_node_ac_overc = pd.concat((df_node_ac_overc, df_node_ac_temp), axis = 1)
@@ -334,20 +329,20 @@ for c in c_params:
 
 # # Save out raw data
 
-# In[29]:
+# In[26]:
 
 
 print(df_node.isna().any().any())
 print(df_node_ac_overc.isna().any().any())
 
 
-# In[30]:
+# In[27]:
 
 
 os.environ['MODELDIR']
 
 
-# In[31]:
+# In[28]:
 
 
 # Save out
@@ -366,13 +361,13 @@ df.to_csv(os.path.join(os.environ['MODELDIR'], 'df_pheno.csv'))
 
 # ### Covariates
 
-# In[32]:
+# In[29]:
 
 
 covs = ['ageAtScan1', 'mprage_antsCT_vol_TBV', 'dti64MeanRelRMS', 'network_density', 'streamline_count']
 
 
-# In[33]:
+# In[30]:
 
 
 rank_r = np.zeros(len(covs),)
@@ -387,7 +382,7 @@ print(np.sum(rank_r < 0.99))
 
 # ### Node features
 
-# In[34]:
+# In[31]:
 
 
 rank_r = np.zeros(df_node.shape[1],)
@@ -400,7 +395,7 @@ for i, col in enumerate(df_node.columns):
 print(np.sum(rank_r < .99))
 
 
-# In[35]:
+# In[32]:
 
 
 rank_r = np.zeros(df_node_ac_overc.shape[1],)
@@ -413,65 +408,25 @@ for i, col in enumerate(df_node_ac_overc.columns):
 print(np.sum(rank_r < .99))
 
 
-# In[36]:
+# ### Psychosis
+
+# In[33]:
 
 
 covs = ['ageAtScan1', 'sex', 'mprage_antsCT_vol_TBV', 'dti64MeanRelRMS']
-phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear']
-# phenos = [s + '_norm' for s in phenos]
+phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg']
 print(phenos)
 
-
-# In[37]:
-
-
 # Create subdirectory for specific normative model -- labeled according to parcellation/resolution choices and covariates
-outdir = os.path.join(os.environ['MODELDIR'], 'predict_pheno')
+outdir = os.path.join(os.environ['MODELDIR'], 'predict_psy')
 print(outdir)
 if not os.path.exists(outdir): os.mkdir(outdir);
-
-
-# In[38]:
-
 
 df_node.to_csv(os.path.join(outdir, 'X.csv'))
 df_node_ac_overc.to_csv(os.path.join(outdir, 'X_ac_c.csv'))
 df.loc[:,phenos].to_csv(os.path.join(outdir, 'y.csv'))
 df.loc[:,covs].to_csv(os.path.join(outdir, 'c.csv'))
 
-
-# In[39]:
-
-
 covs = ['ageAtScan1', 'sex', 'mprage_antsCT_vol_TBV', 'dti64MeanRelRMS', 'streamline_count']
-
-
-# In[40]:
-
-
 df.loc[:,covs].to_csv(os.path.join(outdir, 'c_sc.csv'))
-
-
-# In[41]:
-
-
-# phenos = ['F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy', 'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
-#           'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency']
-
-
-# In[42]:
-
-
-# # Create subdirectory for specific normative model -- labeled according to parcellation/resolution choices and covariates
-# outdir = os.path.join(os.environ['MODELDIR'], 'predict_cog')
-# print(outdir)
-# if not os.path.exists(outdir): os.mkdir(outdir);
-
-
-# In[43]:
-
-
-# df_node.to_csv(os.path.join(outdir, 'X.csv'))
-# df.loc[:,phenos].to_csv(os.path.join(outdir, 'y.csv'))
-# df.loc[:,covs].to_csv(os.path.join(outdir, 'c.csv'))
 

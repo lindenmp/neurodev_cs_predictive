@@ -26,9 +26,9 @@ plt.rcParams['svg.fonttype'] = 'none'
 # In[2]:
 
 
-sys.path.append('/Users/lindenmp/Dropbox/Work/ResProjects/neurodev_cs_predictive/code/func/')
+sys.path.append('/Users/lindenmp/Google-Drive-Penn/work/research_projects/neurodev_cs_predictive/code/func/')
 from proj_environment import set_proj_env
-sys.path.append('/Users/lindenmp/Dropbox/Work/git/pyfunc/')
+sys.path.append('/Users/lindenmp/Google-Drive-Penn/work/misc_projects/pyfunc/')
 from func import my_get_cmap, rank_int
 
 
@@ -132,17 +132,23 @@ df['dti64QAManualScore'].unique()
 # In[9]:
 
 
-np.sum(df['dti64QAManualScore'] == 2)
+np.sum(df['averageManualRating'] == 2)
 
 
 # In[10]:
+
+
+np.sum(df['dti64QAManualScore'] == 2)
+
+
+# In[11]:
 
 
 # Convert age to years
 df['ageAtScan1_Years'] = np.round(df.ageAtScan1/12, decimals=1)
 
 
-# In[11]:
+# In[12]:
 
 
 # find unique ages
@@ -150,9 +156,9 @@ age_unique = np.unique(df.ageAtScan1_Years)
 print('There are', age_unique.shape[0], 'unique age points')
 
 
-# ## Normalize
+# ## Symptom dimensions
 
-# In[12]:
+# In[13]:
 
 
 # phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear',
@@ -162,7 +168,7 @@ phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDiso
 print(phenos)
 
 
-# In[13]:
+# In[14]:
 
 
 for pheno in phenos:
@@ -172,9 +178,10 @@ for pheno in phenos:
         df.loc[df.loc[:,pheno].isna(),pheno] = x
 
 
-# In[14]:
+# In[16]:
 
 
+# Normalize
 rank_r = np.zeros(len(phenos),)
 
 for i, pheno in enumerate(phenos):
@@ -189,7 +196,7 @@ for i, pheno in enumerate(phenos):
 print(np.sum(rank_r < 1))
 
 
-# In[15]:
+# In[17]:
 
 
 df.loc[:,phenos].var()
@@ -197,7 +204,7 @@ df.loc[:,phenos].var()
 
 # ## Export
 
-# In[16]:
+# In[18]:
 
 
 # header = ['squeakycleanExclude','ageAtScan1', 'ageAtScan1_Years','sex','race2','handednessv2', 'restProtocolValidationStatus', 'restExclude',
@@ -205,7 +212,7 @@ df.loc[:,phenos].var()
 #           'Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg','AnxiousMisery','Externalizing','Fear',
 #           'F1_Exec_Comp_Res_Accuracy', 'F2_Social_Cog_Accuracy', 'F3_Memory_Accuracy', 'F1_Complex_Reasoning_Efficiency',
 #           'F2_Memory.Efficiency', 'F3_Executive_Efficiency', 'F4_Social_Cognition_Efficiency']
-header = ['squeakycleanExclude','ageAtScan1', 'ageAtScan1_Years','sex','race2','handednessv2', 'restProtocolValidationStatus', 'restExclude',
+header = ['squeakycleanExclude','ageAtScan1', 'ageAtScan1_Years','sex','race2','handednessv2', 'averageManualRating', 'dti64QAManualScore', 'restProtocolValidationStatus', 'restExclude',
           'dti64MeanAbsRMS','dti64MeanRelRMS','dti64MaxAbsRMS','dti64MaxRelRMS','mprage_antsCT_vol_TBV', 'averageManualRating',
           'Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg']
 df.to_csv(os.path.join(os.environ['TRTEDIR'], 'df_pheno.csv'), columns = header)
@@ -213,7 +220,7 @@ df.to_csv(os.path.join(os.environ['TRTEDIR'], 'df_pheno.csv'), columns = header)
 
 # # Plots
 
-# In[17]:
+# In[19]:
 
 
 if not os.path.exists(os.environ['FIGDIR']): os.makedirs(os.environ['FIGDIR'])
@@ -233,19 +240,7 @@ phenos_label = ['Overall Psychopathology','Psychosis (Positive)','Psychosis (Neg
 
 # ## Age
 
-# In[18]:
-
-
-df['sex'].unique()
-
-
-# In[19]:
-
-
-(np.sum(df.loc[:,'sex'] == 1)/df.shape[0]) * 100
-
-
-# In[20]:
+# In[24]:
 
 
 f, axes = plt.subplots(1,2)
@@ -277,7 +272,7 @@ f.savefig('age_distributions.svg', dpi = 300, bbox_inches = 'tight', pad_inches 
 
 # ## Phenotype distributions over train/test
 
-# In[21]:
+# In[25]:
 
 
 df_rc = pd.melt(df, value_vars = phenos)
@@ -295,7 +290,7 @@ f.savefig('phenos_distributions.svg', dpi = 300, bbox_inches = 'tight', pad_inch
 
 # ### Export sample for FC gradients
 
-# In[22]:
+# In[27]:
 
 
 # 4) rs-fMRI exclusion
@@ -304,7 +299,7 @@ df = df[df['restExclude'] == 0]
 print('N after rs-fMRI exclusion:', df.shape[0])
 
 
-# In[23]:
+# In[28]:
 
 
 df.to_csv(os.path.join(os.environ['TRTEDIR'], 'df_gradients.csv'), columns = header)

@@ -26,21 +26,24 @@ plt.rcParams['svg.fonttype'] = 'none'
 # In[2]:
 
 
-sys.path.append('/Users/lindenmp/Dropbox/Work/ResProjects/neurodev_cs_predictive/code/func/')
+sys.path.append('/Users/lindenmp/Google-Drive-Penn/work/research_projects/neurodev_cs_predictive/code/func/')
 from proj_environment import set_proj_env
-sys.path.append('/Users/lindenmp/Dropbox/Work/git/pyfunc/')
+sys.path.append('/Users/lindenmp/Google-Drive-Penn/work/misc_projects/pyfunc/')
 
 
 # In[3]:
 
 
-exclude_str = 't1Exclude'
-extra_str = '_consist' # '_vol_norm' '_noboxcox' '_consist'
+exclude_str = 't1Exclude' # 't1Exclude' 'fsFinalExclude'
+extra_str = '' # '_consist'
 edge_weight = 'streamlineCount' # 'streamlineCount' 'fa' 'mean_streamlineLength' 'adc'
+parc_str = 'schaefer' # 'schaefer' 'lausanne'
 parc_scale = 200
+parc_variant = 'orig' # 'orig' 'cortex_only'
 parcel_names, parcel_loc, drop_parcels, num_parcels, yeo_idx, yeo_labels = set_proj_env(exclude_str = exclude_str,
-                                                                                        parc_scale = parc_scale,
-                                                                                       extra_str = extra_str, edge_weight = edge_weight)
+                                                                                        parc_str = parc_str, parc_scale = parc_scale,
+                                                                                       extra_str = extra_str, edge_weight = edge_weight,
+                                                                                       parc_variant = parc_variant)
 
 
 # ### Setup output directory
@@ -72,26 +75,35 @@ print(df.shape)
 # In[7]:
 
 
-# # Retain 'adults'
-# my_frac = 0.20
-# my_cut = np.round(df.shape[0]*my_frac).astype(int)
-# print(my_cut)
-# df = df.sort_values('ageAtScan1', ascending = False).iloc[0:my_cut,:]
+my_sample = 'full'
 
 
 # In[8]:
 
 
-df['ageAtScan1_Years'].mean()
+my_frac = 0.20
+my_cut = np.round(df.shape[0]*my_frac).astype(int)
+print(my_cut)
+if my_sample == 'oldest':
+    # Retain 'adults'
+    df = df.sort_values('ageAtScan1', ascending = False).iloc[0:my_cut,:]
+elif my_sample == 'youngest':
+    df = df.sort_values('ageAtScan1', ascending = True).iloc[0:my_cut,:]
 
 
 # In[9]:
 
 
-df['ageAtScan1_Years'].std()
+df['ageAtScan1_Years'].mean()
 
 
 # In[10]:
+
+
+df['ageAtScan1_Years'].std()
+
+
+# In[11]:
 
 
 num_subs = df.shape[0]; print(num_subs)
@@ -102,14 +114,14 @@ num_connections = num_parcels * (num_parcels - 1) / 2; print(num_connections)
 
 # ## Load in time series, compute FC
 
-# In[11]:
+# In[12]:
 
 
 # subject filter
 subj_filt = np.zeros((df.shape[0],)).astype(bool)
 
 
-# In[12]:
+# In[13]:
 
 
 # fc stored as 3d matrix, subjects of 3rd dim
@@ -123,7 +135,11 @@ for (i, (index, row)) in enumerate(df.iterrows()):
     if i == 0: print(full_path)
         
     if len(full_path) > 0:
-        roi_ts[:,:,i] = np.loadtxt(full_path[0])
+        roi_ts_tmp = np.loadtxt(full_path[0])
+        if parc_str == 'lausanne' and parc_variant == 'cortex_only':
+            roi_ts_tmp = roi_ts_tmp[:,parcel_loc == 1]
+    
+        roi_ts[:,:,i] = roi_ts_tmp.copy()
         fc[:,:,i] = np.corrcoef(roi_ts[:,:,i], rowvar = False)
         # fisher r to z
         fc[:,:,i] = np.arctanh(fc[:,:,i])
@@ -139,13 +155,13 @@ for (i, (index, row)) in enumerate(df.iterrows()):
         fc[:,:,i] = np.full((num_parcels, num_parcels), np.nan)
 
 
-# In[13]:
+# In[15]:
 
 
 np.sum(subj_filt)
 
 
-# In[14]:
+# In[15]:
 
 
 if any(subj_filt):
@@ -154,7 +170,7 @@ if any(subj_filt):
     fc = fc[:,:,~subj_filt]
 
 
-# In[15]:
+# In[16]:
 
 
 # # Save out
@@ -164,7 +180,7 @@ if any(subj_filt):
 
 # ### Generate participant gradients
 
-# In[16]:
+# In[17]:
 
 
 from brainspace.datasets import load_group_fc, load_parcellation, load_conte69
@@ -174,7 +190,7 @@ from brainspace.utils.parcellation import map_to_labels
 from brainspace.gradient.utils import dominant_set
 
 
-# In[17]:
+# In[18]:
 
 
 # Generate template
@@ -182,15 +198,25 @@ pnc_conn_mat = np.nanmean(fc, axis = 2)
 pnc_conn_mat[np.eye(num_parcels, dtype = bool)] = 0
 # pnc_conn_mat = dominant_set(pnc_conn_mat, 0.10, as_sparse = False)
 
-gm_template = GradientMaps(n_components = 10, approach='dm', kernel='normalized_angle')
+gm_template = GradientMaps(n_components = 10, approach='dm', kernel='normalized_angle', random_state = 0)
 gm_template.fit(pnc_conn_mat)
 
-np.savetxt(os.path.join(os.environ['MODELDIR'],'pnc_grads_template.txt'),gm_template.gradients_)
+if parc_scale == 200 or parc_scale == 125:
+    gradients = gm_template.gradients_ * -1
+elif parc_scale == 400:
+    gradients = gm_template.gradients_
+
+if my_sample == 'oldest':
+    np.savetxt(os.path.join(os.environ['MODELDIR'],'pnc_grads_template_oldest.txt'),gradients)
+elif my_sample == 'youngest':
+    np.savetxt(os.path.join(os.environ['MODELDIR'],'pnc_grads_template_youngest.txt'),gradients)
+else:
+    np.savetxt(os.path.join(os.environ['MODELDIR'],'pnc_grads_template.txt'),gradients)
 
 
 # # Plots
 
-# In[18]:
+# In[19]:
 
 
 if not os.path.exists(os.environ['FIGDIR']): os.makedirs(os.environ['FIGDIR'])
@@ -198,13 +224,13 @@ os.chdir(os.environ['FIGDIR'])
 sns.set(style='white', context = 'paper', font_scale = 1)
 
 
-# In[19]:
+# In[20]:
 
 
 sns.heatmap(pnc_conn_mat, cmap = 'coolwarm', center = 0)
 
 
-# In[20]:
+# In[21]:
 
 
 fig, ax = plt.subplots(1, figsize=(5, 4))
@@ -215,21 +241,24 @@ ax.set_ylabel('Eigenvalue')
 plt.show()
 
 
-# In[21]:
+# In[22]:
 
 
 import matplotlib.image as mpimg
 from brain_plot_func import brain_plot
 
 
-# In[22]:
+# In[23]:
 
 
-subject_id = 'fsaverage'
+if parc_str == 'schaefer':
+    subject_id = 'fsaverage'
+elif parc_str == 'lausanne':
+    subject_id = 'lausanne125'
 surf = 'inflated'
 
 
-# In[23]:
+# In[24]:
 
 
 get_ipython().run_line_magic('pylab', 'qt')
@@ -237,26 +266,41 @@ get_ipython().run_line_magic('pylab', 'qt')
 
 # ## Brain plots nispat
 
-# In[24]:
+# In[25]:
 
 
 for i in range(0,2):
     for hemi in ('lh', 'rh'):
         # Plots of univariate pheno correlation
         fig_str = hemi + '_gradient_' + str(i)
-        parc_file = os.path.join('/Users/lindenmp/Dropbox/Work/ResProjects/NormativeNeuroDev_CrossSec/figs_support/Parcellations/FreeSurfer5.3/fsaverage/label/',
-                                 hemi + '.Schaefer2018_' + str(parc_scale) + 'Parcels_17Networks_order.annot')
 
-        brain_plot(gm_template.gradients_[:,i], parcel_names, parc_file, fig_str, subject_id = subject_id, surf = surf, hemi = hemi, color = 'viridis_r', showcolorbar = True)
+        if subject_id == 'lausanne125':
+            parc_file = os.path.join('/Applications/freesurfer/subjects/', subject_id, 'label', hemi + '.myaparc_' + str(parc_scale) + '.annot')
+        elif subject_id == 'fsaverage':
+            parc_file = os.path.join('/Users/lindenmp/Dropbox/Work/ResProjects/NormativeNeuroDev_CrossSec_T1/figs_support/Parcellations/FreeSurfer5.3/fsaverage/label/',
+                                     hemi + '.Schaefer2018_' + str(parc_scale) + 'Parcels_17Networks_order.annot')
 
 
-# In[25]:
+        brain_plot(gradients[:,i], parcel_names, parc_file, fig_str, subject_id = subject_id, surf = surf, hemi = hemi, color = 'viridis', showcolorbar = False)
+
+
+# In[26]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
 
 
-# In[26]:
+# In[27]:
+
+
+f, ax = plt.subplots()
+f.set_figwidth(5)
+f.set_figheight(5)
+sns.heatmap(np.zeros((5,5)), ax = ax, cmap = 'viridis')
+f.savefig('viridis.svg', dpi = 300, bbox_inches = 'tight')
+
+
+# In[28]:
 
 
 for i in range(0,2):
@@ -287,78 +331,41 @@ for i in range(0,2):
     except FileNotFoundError: axes[3].axis('off')
 
     plt.show()
-    f.savefig('gradient_' + str(i) + '.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
-
-
-# In[27]:
-
-
-# for i in range(0,2):
-
-#     f, axes = plt.subplots(2, 2)
-#     f.set_figwidth(4)
-#     f.set_figheight(4)
-#     plt.subplots_adjust(wspace=0, hspace=0)
-
-#     # column 0:
-#     fig_str = 'lh_gradient_' + str(i) + '.png'
-#     try:
-#     #     axes[0,0].set_title('Thickness (left)')
-#         image = mpimg.imread('lat_' + fig_str); axes[0,0].imshow(image); axes[0,0].axis('off')
-#     except FileNotFoundError: axes[0,0].axis('off')
-#     try:
-#         image = mpimg.imread('med_' + fig_str); axes[1,0].imshow(image); axes[1,0].axis('off')
-#     except FileNotFoundError: axes[1,0].axis('off')
-
-#     # column 1:
-#     fig_str = 'rh_gradient_' + str(i) + '.png'
-#     try:
-#     #     axes[0,1].set_title('Thickness (right)')
-#         image = mpimg.imread('lat_' + fig_str); axes[0,1].imshow(image); axes[0,1].axis('off')
-#     except FileNotFoundError: axes[0,1].axis('off')
-#     try:
-#         image = mpimg.imread('med_' + fig_str); axes[1,1].imshow(image); axes[1,1].axis('off')
-#     except FileNotFoundError: axes[1,1].axis('off')
-
-#     plt.show()
-#     f.savefig('gradient_' + str(i) + '.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
-
-
-# In[28]:
-
-
-# run_grads = False
+    if my_sample == 'oldest':
+        f.savefig('gradient_' + str(i) + '_oldest.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0)        
+    elif my_sample == 'youngest':
+        f.savefig('gradient_' + str(i) + '_youngest.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0)        
+    else:
+        f.savefig('gradient_' + str(i) + '.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
 
 
 # In[29]:
 
 
-# if run_grads == True:
-#     grads = np.zeros((gm_template.gradients_.shape[0],gm_template.gradients_.shape[1],num_subs))
-    
-#     for (i, (index, row)) in enumerate(df.iterrows()):
-#         fc_tmp = dominant_set(fc[:,:,i], 0.10, as_sparse = False)
-#         gm_p = GradientMaps(n_components=2, approach='dm', kernel='normalized_angle', alignment='procrustes')
-#         gm_p.fit(fc_tmp, reference = gm_template.gradients_)
-#         grads[:,:,i] = gm_p.gradients_
-    
-#     np.save(os.path.join(os.environ['MODELDIR'],'pnc_grads'),grads)
-# else:
-#     grads = np.load(os.path.join(os.environ['MODELDIR'],'pnc_grads.npy'))
+for i in range(0,2):
 
+    f, axes = plt.subplots(2,1)
+    f.set_figwidth(2)
+    f.set_figheight(3)
+    plt.subplots_adjust(wspace=0, hspace=0)
 
-# In[30]:
+    # column 0:
+    fig_str = 'lh_gradient_' + str(i) + '.png'
+    try:
+    #     axes[0,0].set_title('Thickness (left)')
+        image = mpimg.imread('lat_' + fig_str); axes[0].imshow(image); axes[0].axis('off')
+    except FileNotFoundError: axes[0].axis('off')
+    try:
+        image = mpimg.imread('med_' + fig_str); axes[1].imshow(image); axes[1].axis('off')
+    except FileNotFoundError: axes[1].axis('off')
 
-
-# # Save out
-# np.save(os.path.join(os.environ['MODELDIR'], 'A'), A)
-# df_node.to_csv(os.path.join(os.environ['MODELDIR'], 'df_node.csv'))
-# df.to_csv(os.path.join(os.environ['MODELDIR'], 'df.csv'))
-
-# if any(subj_filt_sc):
-#     np.save(os.path.join(os.environ['MODELDIR'], 'subj_filt_sc'), subj_filt_sc)
-# if any(subj_filt_fc):
-#     np.save(os.path.join(os.environ['MODELDIR'], 'subj_filt_fc'), subj_filt_fc)
+    plt.show()
+    if my_sample == 'oldest':
+        f.savefig('gradient_' + str(i) + '_oldest.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0)        
+    elif my_sample == 'youngest':
+        f.savefig('gradient_' + str(i) + '_youngest.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0)        
+    else:
+        f.savefig('gradient_' + str(i) + '.svg', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
 
 
 # In[ ]:
