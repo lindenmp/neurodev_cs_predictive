@@ -2,30 +2,31 @@ name: neurodev_cs_predictive
 channels:
   - defaults
 dependencies:
-  - ca-certificates=2020.1.1=0
-  - certifi=2019.11.28=py37_1
-  - libcxx=4.0.1=hcfea43d_1
-  - libcxxabi=4.0.1=hcfea43d_1
-  - libedit=3.1.20181209=hb402a30_0
-  - libffi=3.2.1=h475c297_4
-  - ncurses=6.2=h0a44026_0
-  - openssl=1.1.1e=h1de35cc_0
-  - pip=20.0.2=py37_1
-  - python=3.7.7=hfe9666f_0_cpython
-  - readline=7.0=h1de35cc_5
-  - setuptools=46.1.1=py37_0
-  - sqlite=3.31.1=ha441bb4_0
-  - tk=8.6.8=ha441bb4_0
-  - wheel=0.34.2=py37_0
-  - xz=5.2.4=h1de35cc_4
+  - ca-certificates=2020.7.22=0
+  - certifi=2020.6.20=py37_0
+  - libcxx=10.0.0=1
+  - libedit=3.1.20191231=h1de35cc_1
+  - libffi=3.3=hb1e8313_2
+  - ncurses=6.2=h0a44026_1
+  - openssl=1.1.1g=h1de35cc_0
+  - pip=20.2.2=py37_0
+  - python=3.7.7=hf48f09d_4
+  - readline=8.0=h1de35cc_0
+  - setuptools=49.6.0=py37_0
+  - sqlite=3.33.0=hffcf06c_0
+  - tk=8.6.10=hb0a8c7a_0
+  - wheel=0.35.1=py_0
+  - xz=5.2.5=h1de35cc_0
   - zlib=1.2.11=h1de35cc_3
   - pip:
     - appnope==0.1.0
     - apptools==4.5.0
-    - attrs==19.3.0
-    - backcall==0.1.0
-    - bleach==3.1.3
+    - argon2-cffi==20.1.0
+    - attrs==20.1.0
+    - backcall==0.2.0
+    - bleach==3.1.5
     - brainspace==0.1.1
+    - cffi==1.14.2
     - chardet==3.0.4
     - configobj==5.0.6
     - cycler==0.10.0
@@ -35,88 +36,89 @@ dependencies:
     - envisage==4.9.2
     - future==0.18.2
     - glob3==0.0.1
-    - idna==2.9
-    - importlib-metadata==1.5.0
-    - ipykernel==5.2.0
-    - ipython==7.13.0
+    - idna==2.10
+    - importlib-metadata==1.7.0
+    - ipykernel==5.3.4
+    - ipython==7.17.0
     - ipython-genutils==0.2.0
     - ipywidgets==7.5.1
-    - jedi==0.16.0
-    - jinja2==2.11.1
-    - joblib==0.14.1
-    - json5==0.9.3
+    - jedi==0.17.2
+    - jinja2==2.11.2
+    - joblib==0.16.0
+    - json5==0.9.5
     - jsonschema==3.2.0
-    - jupyter-client==6.1.0
+    - jupyter-client==6.1.7
     - jupyter-contrib-core==0.3.3
     - jupyter-contrib-nbextensions==0.5.1
     - jupyter-core==4.6.3
     - jupyter-highlight-selected-word==0.2.0
     - jupyter-latex-envs==1.4.6
     - jupyter-nbextensions-configurator==0.4.1
-    - jupyterlab==2.0.1
-    - jupyterlab-server==1.0.7
-    - kiwisolver==1.1.0
+    - jupyterlab==2.2.6
+    - jupyterlab-server==1.2.0
+    - kiwisolver==1.2.0
     - littleutils==0.2.2
-    - lxml==4.5.0
+    - lxml==4.5.2
     - markupsafe==1.1.1
-    - matplotlib==3.2.1
+    - matplotlib==3.3.1
     - mayavi==4.7.1
     - mistune==0.8.4
     - nbconvert==5.6.1
-    - nbformat==5.0.4
-    - nibabel==3.0.2
+    - nbformat==5.0.7
+    - nibabel==3.1.1
     - nilearn==0.6.2
-    - notebook==6.0.3
-    - numpy==1.18.2
+    - notebook==6.1.3
+    - numpy==1.19.1
     - outdated==0.2.0
-    - pandas==1.0.3
+    - packaging==20.4
+    - pandas==1.1.1
     - pandas-flavor==0.2.0
     - pandocfilters==1.4.2
-    - parso==0.6.2
+    - parso==0.7.1
     - patsy==0.5.1
     - pexpect==4.8.0
     - pickleshare==0.7.5
-    - pillow==7.1.2
-    - pingouin==0.3.3
-    - progressbar2==3.50.1
-    - prometheus-client==0.7.1
-    - prompt-toolkit==3.0.4
+    - pillow==7.2.0
+    - pingouin==0.3.7
+    - progressbar2==3.51.4
+    - prometheus-client==0.8.0
+    - prompt-toolkit==3.0.6
     - ptyprocess==0.6.0
-    - pyface==6.1.2
+    - pycparser==2.20
+    - pyface==7.0.1
     - pygam==0.8.0
     - pygments==2.6.1
-    - pyparsing==2.4.6
-    - pyqt5==5.14.1
-    - pyqt5-sip==12.7.1
+    - pyparsing==2.4.7
+    - pyqt5==5.15.0
+    - pyqt5-sip==12.8.0
     - pyrsistent==0.16.0
-    - pysurfer==0.10.0
+    - pysurfer==0.11.0
     - python-dateutil==2.8.1
     - python-utils==2.4.0
-    - pytz==2019.3
+    - pytz==2020.1
     - pyyaml==5.3.1
-    - pyzmq==19.0.0
-    - requests==2.23.0
-    - scikit-learn==0.22.2.post1
-    - scipy==1.4.1
-    - seaborn==0.10.0
+    - pyzmq==19.0.2
+    - requests==2.24.0
+    - scikit-learn==0.23.2
+    - scipy==1.5.2
+    - seaborn==0.10.1
     - send2trash==1.5.0
-    - shap==0.35.0
-    - six==1.14.0
+    - six==1.15.0
     - sklearn==0.0
-    - statsmodels==0.11.1
+    - statsmodels==0.12.0
+    - tabulate==0.8.7
     - terminado==0.8.3
     - testpath==0.4.4
+    - threadpoolctl==2.1.0
     - tornado==6.0.4
-    - tqdm==4.46.1
     - traitlets==4.3.3
-    - traits==6.0.0
-    - traitsui==6.1.3
-    - urllib3==1.25.8
-    - vtk==8.1.2
-    - wcwidth==0.1.9
+    - traits==6.1.1
+    - traitsui==7.0.1
+    - urllib3==1.25.10
+    - vtk==9.0.1
+    - wcwidth==0.2.5
     - webencodings==0.5.1
     - widgetsnbextension==3.5.1
-    - xarray==0.15.1
+    - xarray==0.16.0
     - zipp==3.1.0
 prefix: /Users/lindenmp/opt/anaconda3/envs/neurodev_cs_predictive
-
