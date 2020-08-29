@@ -39,16 +39,24 @@ edge_weight = 'streamlineCount'
 parcel_names, parcel_loc, drop_parcels, num_parcels = set_proj_env(parc_str = parc_str, parc_scale = parc_scale, edge_weight = edge_weight)
 
 
+# In[4]:
+
+
+# output file prefix
+outfile_prefix = parc_str+'_'+str(parc_scale)+'_'+edge_weight+'_'
+outfile_prefix
+
+
 # ### Setup directory variables
 
-# In[4]:
+# In[5]:
 
 
 print(os.environ['PIPELINEDIR'])
 if not os.path.exists(os.environ['PIPELINEDIR']): os.makedirs(os.environ['PIPELINEDIR'])
 
 
-# In[5]:
+# In[6]:
 
 
 figdir = os.path.join(os.environ['OUTPUTDIR'], 'figs')
@@ -56,7 +64,7 @@ print(figdir)
 if not os.path.exists(figdir): os.makedirs(figdir)
 
 
-# In[6]:
+# In[7]:
 
 
 phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg']
@@ -66,7 +74,7 @@ phenos_short = ['Ov. Psy.','Psy. (pos)','Psy. (neg)']
 
 # ## Setup plots
 
-# In[7]:
+# In[8]:
 
 
 if not os.path.exists(figdir): os.makedirs(figdir)
@@ -77,32 +85,32 @@ cmap = my_get_cmap('pair')
 
 # ## Load data
 
-# In[8]:
-
-
-df = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'store', 'df.csv'))
-df.set_index(['bblid', 'scanid'], inplace = True)
-
-
 # In[9]:
 
 
-df['sex'].unique()
+df = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'store', outfile_prefix+'df.csv'))
+df.set_index(['bblid', 'scanid'], inplace = True)
 
 
 # In[10]:
 
 
-(np.sum(df.loc[:,'sex'] == 1)/df.shape[0]) * 100
+df['sex'].unique()
 
 
 # In[11]:
 
 
-df['ageAtScan1_Years'].mean()
+(np.sum(df.loc[:,'sex'] == 1)/df.shape[0]) * 100
 
 
 # In[12]:
+
+
+df['ageAtScan1_Years'].mean()
+
+
+# In[13]:
 
 
 df['ageAtScan1_Years'].std()
@@ -110,7 +118,7 @@ df['ageAtScan1_Years'].std()
 
 # ### Sex
 
-# In[13]:
+# In[14]:
 
 
 f, ax = plt.subplots(1,3)
@@ -129,12 +137,12 @@ for i, pheno in enumerate(phenos):
     sns.distplot(y, ax=ax[i], label = 'females')
     ax[i].legend()
 
-f.savefig('symptoms_distributions_sex.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
+f.savefig(outfile_prefix+'symptoms_distributions_sex.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
 
 
 # ### Age
 
-# In[14]:
+# In[15]:
 
 
 f, ax = plt.subplots(1,3)
@@ -151,5 +159,5 @@ for i, pheno in enumerate(phenos):
         
     sns.regplot(x, y, ax=ax[i])
     
-f.savefig('symptoms_correlations_age.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
+f.savefig(outfile_prefix+'symptoms_correlations_age.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
 

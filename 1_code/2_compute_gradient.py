@@ -49,16 +49,24 @@ edge_weight = 'streamlineCount'
 parcel_names, parcel_loc, drop_parcels, num_parcels = set_proj_env(parc_str = parc_str, parc_scale = parc_scale, edge_weight = edge_weight)
 
 
+# In[5]:
+
+
+# output file prefix
+outfile_prefix = parc_str+'_'+str(parc_scale)+'_'
+outfile_prefix
+
+
 # ### Setup directory variables
 
-# In[5]:
+# In[6]:
 
 
 print(os.environ['PIPELINEDIR'])
 if not os.path.exists(os.environ['PIPELINEDIR']): os.makedirs(os.environ['PIPELINEDIR'])
 
 
-# In[6]:
+# In[7]:
 
 
 outputdir = os.path.join(os.environ['PIPELINEDIR'], '2_compute_gradient', 'out')
@@ -66,7 +74,7 @@ print(outputdir)
 if not os.path.exists(outputdir): os.makedirs(outputdir)
 
 
-# In[7]:
+# In[8]:
 
 
 figdir = os.path.join(os.environ['OUTPUTDIR'], 'figs')
@@ -76,7 +84,7 @@ if not os.path.exists(figdir): os.makedirs(figdir)
 
 # ## Load data
 
-# In[8]:
+# In[9]:
 
 
 # Load data
@@ -85,19 +93,19 @@ df.set_index(['bblid', 'scanid'], inplace = True)
 print(df.shape)
 
 
-# In[9]:
+# In[10]:
 
 
 df['ageAtScan1_Years'].mean()
 
 
-# In[10]:
+# In[11]:
 
 
 df['ageAtScan1_Years'].std()
 
 
-# In[11]:
+# In[12]:
 
 
 num_subs = df.shape[0]; print(num_subs)
@@ -108,14 +116,14 @@ num_connections = num_parcels * (num_parcels - 1) / 2; print(num_connections)
 
 # ## Load in time series, compute FC
 
-# In[12]:
+# In[13]:
 
 
 # subject filter
 subj_filt = np.zeros((df.shape[0],)).astype(bool)
 
 
-# In[13]:
+# In[14]:
 
 
 # fc stored as 3d matrix, subjects of 3rd dim
@@ -144,13 +152,13 @@ for (i, (index, row)) in enumerate(df.iterrows()):
         fc[:,:,i] = np.full((num_parcels, num_parcels), np.nan)
 
 
-# In[14]:
+# In[15]:
 
 
 np.sum(subj_filt)
 
 
-# In[15]:
+# In[16]:
 
 
 if any(subj_filt):
@@ -161,7 +169,7 @@ if any(subj_filt):
 
 # ### Generate participant gradients
 
-# In[16]:
+# In[17]:
 
 
 # Generate template
@@ -177,12 +185,12 @@ if parc_scale == 200 or parc_scale == 125:
 elif parc_scale == 400:
     gradients = gm_template.gradients_
 
-np.savetxt(os.path.join(outputdir,'pnc_grads_template.txt'),gradients)
+np.savetxt(os.path.join(outputdir,outfile_prefix+'pnc_grads_template.txt'),gradients)
 
 
 # # Plots
 
-# In[17]:
+# In[18]:
 
 
 if not os.path.exists(figdir): os.makedirs(figdir)
@@ -190,39 +198,39 @@ os.chdir(figdir)
 sns.set(style='white', context = 'paper', font_scale = 1)
 
 
-# In[18]:
+# In[19]:
 
 
 f, ax = plt.subplots(1, figsize=(5, 5))
 sns.heatmap(pnc_conn_mat, cmap = 'coolwarm', center = 0, square = True)
-f.savefig('mean_fc.png', dpi = 300, bbox_inches = 'tight')
+f.savefig(outfile_prefix+'mean_fc.png', dpi = 300, bbox_inches = 'tight')
 
 
-# In[19]:
+# In[20]:
 
 
 f, ax = plt.subplots(1, figsize=(5, 4))
 ax.scatter(range(gm_template.lambdas_.size), gm_template.lambdas_)
 ax.set_xlabel('Component Nb')
 ax.set_ylabel('Eigenvalue')
-f.savefig('gradient_eigenvals.png', dpi = 300, bbox_inches = 'tight')
+f.savefig(outfile_prefix+'gradient_eigenvals.png', dpi = 300, bbox_inches = 'tight')
 
 
-# In[20]:
+# In[21]:
 
 
 import matplotlib.image as mpimg
 from brain_plot_func import brain_plot
 
 
-# In[21]:
+# In[22]:
 
 
 subject_id = 'fsaverage'
 surf = 'inflated'
 
 
-# In[22]:
+# In[23]:
 
 
 get_ipython().run_line_magic('pylab', 'qt')
@@ -230,7 +238,7 @@ get_ipython().run_line_magic('pylab', 'qt')
 
 # ## Brain plots nispat
 
-# In[23]:
+# In[24]:
 
 
 for i in range(0,1):
@@ -244,13 +252,13 @@ for i in range(0,1):
         brain_plot(gradients[:,i], parcel_names, parc_file, fig_str, subject_id = subject_id, surf = surf, hemi = hemi, color = 'viridis', showcolorbar = False)
 
 
-# In[24]:
+# In[25]:
 
 
 get_ipython().run_line_magic('matplotlib', 'inline')
 
 
-# In[25]:
+# In[26]:
 
 
 f, ax = plt.subplots()
@@ -260,40 +268,40 @@ sns.heatmap(np.zeros((5,5)), ax = ax, cmap = 'viridis')
 f.savefig('viridis.svg', dpi = 300, bbox_inches = 'tight')
 
 
-# In[26]:
-
-
-for i in range(0,1):
-    f, axes = plt.subplots(1, 4)
-    f.set_figwidth(8)
-    f.set_figheight(2)
-    plt.subplots_adjust(wspace=0, hspace=0)
-
-    # column 0:
-    fig_str = 'lh_gradient_' + str(i) + '.png'
-    try:
-    #     axes[0,0].set_title('Thickness (left)')
-        image = mpimg.imread('lat_' + fig_str); axes[0].imshow(image); axes[0].axis('off')
-    except FileNotFoundError: axes[0].axis('off')
-    try:
-        image = mpimg.imread('med_' + fig_str); axes[1].imshow(image); axes[1].axis('off')
-    except FileNotFoundError: axes[1].axis('off')
-
-    # column 1:
-    fig_str = 'rh_gradient_' + str(i) + '.png'
-    try:
-    #     axes[0,1].set_title('Thickness (right)')
-        image = mpimg.imread('med_' + fig_str); axes[2].imshow(image); axes[2].axis('off')
-    except FileNotFoundError: axes[2].axis('off')
-    try:
-        image = mpimg.imread('lat_' + fig_str); axes[3].imshow(image); axes[3].axis('off')
-    except FileNotFoundError: axes[3].axis('off')
-
-    plt.show()
-    f.savefig('gradient_' + str(i) + '.svg', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
-
-
 # In[27]:
+
+
+# for i in range(0,1):
+#     f, axes = plt.subplots(1, 4)
+#     f.set_figwidth(8)
+#     f.set_figheight(2)
+#     plt.subplots_adjust(wspace=0, hspace=0)
+
+#     # column 0:
+#     fig_str = 'lh_gradient_' + str(i) + '.png'
+#     try:
+#     #     axes[0,0].set_title('Thickness (left)')
+#         image = mpimg.imread('lat_' + fig_str); axes[0].imshow(image); axes[0].axis('off')
+#     except FileNotFoundError: axes[0].axis('off')
+#     try:
+#         image = mpimg.imread('med_' + fig_str); axes[1].imshow(image); axes[1].axis('off')
+#     except FileNotFoundError: axes[1].axis('off')
+
+#     # column 1:
+#     fig_str = 'rh_gradient_' + str(i) + '.png'
+#     try:
+#     #     axes[0,1].set_title('Thickness (right)')
+#         image = mpimg.imread('med_' + fig_str); axes[2].imshow(image); axes[2].axis('off')
+#     except FileNotFoundError: axes[2].axis('off')
+#     try:
+#         image = mpimg.imread('lat_' + fig_str); axes[3].imshow(image); axes[3].axis('off')
+#     except FileNotFoundError: axes[3].axis('off')
+
+#     plt.show()
+#     f.savefig(outfile_prefix+'gradient_' + str(i) + '.svg', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
+
+
+# In[28]:
 
 
 for i in range(0,1):
@@ -313,5 +321,22 @@ for i in range(0,1):
     except FileNotFoundError: axes[1].axis('off')
 
     plt.show()
-    f.savefig('gradient_' + str(i) + '.svg', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
+    f.savefig(outfile_prefix+'gradient_' + str(i) + '.svg', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
+
+
+# In[29]:
+
+
+# clean up
+fileList = glob.glob(os.path.join(figdir,'lat_*.png'), recursive=True)
+print(fileList)
+for filePath in fileList: os.remove(filePath)
+
+
+# In[30]:
+
+
+fileList = glob.glob(os.path.join(figdir,'med_*.png'), recursive=True)
+print(fileList)
+for filePath in fileList: os.remove(filePath)
 

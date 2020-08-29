@@ -39,16 +39,24 @@ edge_weight = 'streamlineCount'
 parcel_names, parcel_loc, drop_parcels, num_parcels = set_proj_env(parc_str = parc_str, parc_scale = parc_scale, edge_weight = edge_weight)
 
 
+# In[4]:
+
+
+# output file prefix
+outfile_prefix = parc_str+'_'+str(parc_scale)+'_'+edge_weight+'_'
+outfile_prefix
+
+
 # ### Setup directory variables
 
-# In[4]:
+# In[5]:
 
 
 print(os.environ['PIPELINEDIR'])
 if not os.path.exists(os.environ['PIPELINEDIR']): os.makedirs(os.environ['PIPELINEDIR'])
 
 
-# In[5]:
+# In[6]:
 
 
 storedir = os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'store')
@@ -60,7 +68,7 @@ print(outputdir)
 if not os.path.exists(outputdir): os.makedirs(outputdir)
 
 
-# In[6]:
+# In[7]:
 
 
 figdir = os.path.join(os.environ['OUTPUTDIR'], 'figs')
@@ -70,7 +78,7 @@ if not os.path.exists(figdir): os.makedirs(figdir)
 
 # ## Load data
 
-# In[7]:
+# In[8]:
 
 
 # Load data
@@ -79,7 +87,7 @@ df.set_index(['bblid', 'scanid'], inplace = True)
 print(df.shape)
 
 
-# In[8]:
+# In[9]:
 
 
 # Missing data file for this subject only for schaefer 200
@@ -87,7 +95,7 @@ if parc_scale == 200:
     df.drop(labels = (112598, 5161), inplace=True)
 
 
-# In[9]:
+# In[10]:
 
 
 # output dataframe
@@ -100,14 +108,14 @@ print(df_node.shape)
 
 # ## Load in structural connectivity matrices
 
-# In[10]:
+# In[11]:
 
 
 # subject filter
 subj_filt = np.zeros((df.shape[0],)).astype(bool)
 
 
-# In[11]:
+# In[12]:
 
 
 A = np.zeros((num_parcels, num_parcels, df.shape[0]))
@@ -129,13 +137,13 @@ for (i, (index, row)) in enumerate(df.iterrows()):
         A[:,:,i] = np.full((num_parcels, num_parcels), np.nan)
 
 
-# In[12]:
+# In[13]:
 
 
 np.sum(subj_filt)
 
 
-# In[13]:
+# In[14]:
 
 
 if any(subj_filt):
@@ -147,14 +155,14 @@ print(df_node.shape)
 
 # ### Check if any subjects have disconnected nodes in A matrix
 
-# In[14]:
+# In[15]:
 
 
 # subject filter
 subj_filt = np.zeros((df.shape[0],)).astype(bool)
 
 
-# In[15]:
+# In[16]:
 
 
 for i in range(A.shape[2]):
@@ -162,13 +170,13 @@ for i in range(A.shape[2]):
         subj_filt[i] = True
 
 
-# In[16]:
+# In[17]:
 
 
 np.sum(subj_filt)
 
 
-# In[17]:
+# In[18]:
 
 
 if any(subj_filt):
@@ -178,13 +186,13 @@ if any(subj_filt):
 print(df_node.shape)
 
 
-# In[18]:
+# In[19]:
 
 
 np.sum(df['averageManualRating'] == 2)
 
 
-# In[19]:
+# In[20]:
 
 
 np.sum(df['dti64QAManualScore'] == 2)
@@ -192,7 +200,7 @@ np.sum(df['dti64QAManualScore'] == 2)
 
 # ### Get streamline count and network density
 
-# In[20]:
+# In[21]:
 
 
 A_c = np.zeros((A.shape[2],))
@@ -206,7 +214,7 @@ df.loc[:,'network_density'] = A_d
 
 # ### Compute node metrics
 
-# In[21]:
+# In[22]:
 
 
 # fc stored as 3d matrix, subjects of 3rd dim
@@ -223,14 +231,14 @@ df_node.loc[:,ac_labels] = AC
 
 # ## Recalculate average control at different C params
 
-# In[22]:
+# In[23]:
 
 
 c_params = np.array([10, 100, 1000, 10000])
 c_params
 
 
-# In[23]:
+# In[24]:
 
 
 # output dataframe
@@ -252,21 +260,20 @@ for c in c_params:
 
 # # Save out raw data
 
-# In[24]:
+# In[25]:
 
 
 print(df_node.isna().any().any())
 print(df_node_ac_overc.isna().any().any())
 
 
-# In[32]:
+# In[26]:
 
 
-np.save(os.path.join(storedir, 'A'), A)
-
-df_node.to_csv(os.path.join(storedir, 'df_node_base.csv'))
-df_node_ac_overc.to_csv(os.path.join(storedir, 'df_node_ac_overc_base.csv'))
-df.to_csv(os.path.join(storedir, 'df.csv'))
+np.save(os.path.join(storedir, outfile_prefix+'A'), A)
+df_node.to_csv(os.path.join(storedir, outfile_prefix+'df_node.csv'))
+df_node_ac_overc.to_csv(os.path.join(storedir, outfile_prefix+'df_node_ac_overc.csv'))
+df.to_csv(os.path.join(storedir, outfile_prefix+'df.csv'))
 
 
 # # Export for prediction
@@ -275,13 +282,13 @@ df.to_csv(os.path.join(storedir, 'df.csv'))
 
 # ### Covariates
 
-# In[26]:
+# In[27]:
 
 
 covs = ['ageAtScan1', 'mprage_antsCT_vol_TBV', 'dti64MeanRelRMS', 'network_density', 'streamline_count']
 
 
-# In[27]:
+# In[28]:
 
 
 rank_r = np.zeros(len(covs),)
@@ -296,7 +303,7 @@ print(np.sum(rank_r < 0.99))
 
 # ### Node features
 
-# In[28]:
+# In[29]:
 
 
 rank_r = np.zeros(df_node.shape[1],)
@@ -309,7 +316,7 @@ for i, col in enumerate(df_node.columns):
 print(np.sum(rank_r < .99))
 
 
-# In[29]:
+# In[30]:
 
 
 rank_r = np.zeros(df_node_ac_overc.shape[1],)
@@ -324,18 +331,18 @@ print(np.sum(rank_r < .99))
 
 # ### Psychosis
 
-# In[30]:
+# In[31]:
 
 
 covs = ['ageAtScan1', 'sex', 'mprage_antsCT_vol_TBV', 'dti64MeanRelRMS']
 phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg']
 print(phenos)
 
-df_node.to_csv(os.path.join(outputdir, 'X.csv'))
-df_node_ac_overc.to_csv(os.path.join(outputdir, 'X_ac_c.csv'))
-df.loc[:,phenos].to_csv(os.path.join(outputdir, 'y.csv'))
-df.loc[:,covs].to_csv(os.path.join(outputdir, 'c.csv'))
+df_node.to_csv(os.path.join(outputdir, outfile_prefix+'X.csv'))
+df_node_ac_overc.to_csv(os.path.join(outputdir, outfile_prefix+'X_ac_c.csv'))
+df.loc[:,phenos].to_csv(os.path.join(outputdir, outfile_prefix+'y.csv'))
+df.loc[:,covs].to_csv(os.path.join(outputdir, outfile_prefix+'c.csv'))
 
 covs = ['ageAtScan1', 'sex', 'mprage_antsCT_vol_TBV', 'dti64MeanRelRMS', 'streamline_count']
-df.loc[:,covs].to_csv(os.path.join(outputdir, 'c_sc.csv'))
+df.loc[:,covs].to_csv(os.path.join(outputdir, outfile_prefix+'c_sc.csv'))
 

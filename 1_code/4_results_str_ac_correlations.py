@@ -45,16 +45,24 @@ edge_weight = 'streamlineCount'
 parcel_names, parcel_loc, drop_parcels, num_parcels = set_proj_env(parc_str = parc_str, parc_scale = parc_scale, edge_weight = edge_weight)
 
 
+# In[5]:
+
+
+# output file prefix
+outfile_prefix = parc_str+'_'+str(parc_scale)+'_'+edge_weight+'_'
+outfile_prefix
+
+
 # ### Setup directory variables
 
-# In[5]:
+# In[6]:
 
 
 print(os.environ['PIPELINEDIR'])
 if not os.path.exists(os.environ['PIPELINEDIR']): os.makedirs(os.environ['PIPELINEDIR'])
 
 
-# In[6]:
+# In[7]:
 
 
 figdir = os.path.join(os.environ['OUTPUTDIR'], 'figs')
@@ -62,7 +70,7 @@ print(figdir)
 if not os.path.exists(figdir): os.makedirs(figdir)
 
 
-# In[7]:
+# In[8]:
 
 
 phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg']
@@ -78,7 +86,7 @@ scores = ['corr', 'rmse']
 
 # ## Setup plots
 
-# In[8]:
+# In[9]:
 
 
 if not os.path.exists(figdir): os.makedirs(figdir)
@@ -89,26 +97,26 @@ cmap = my_get_cmap('pair')
 
 # ## Load data
 
-# In[9]:
+# In[10]:
 
 
-df_node = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'out', 'X.csv'))
+df_node = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'out', outfile_prefix+'X.csv'))
 df_node.set_index(['bblid', 'scanid'], inplace = True)
 
-df_node_ac_overc = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'out', 'X_ac_c.csv'))
+df_node_ac_overc = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'out', outfile_prefix+'X_ac_c.csv'))
 df_node_ac_overc.set_index(['bblid', 'scanid'], inplace = True)
 
-df_pheno = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'out', 'y.csv'))
+df_pheno = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'out', outfile_prefix+'y.csv'))
 df_pheno.set_index(['bblid', 'scanid'], inplace = True)
 
-c = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'out', 'c.csv'))
+c = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'out', outfile_prefix+'c.csv'))
 c.set_index(['bblid', 'scanid'], inplace = True); print(c.shape)
 c.columns
 
 
 # ### Nuisance regression
 
-# In[10]:
+# In[11]:
 
 
 # Note, this nuisance regression made no difference.
@@ -121,22 +129,22 @@ c.columns
 # X_pred = nuis_reg.predict(c); df_node_ac_overc = df_node_ac_overc - X_pred
 
 
-# In[11]:
-
-
-g = 0
-gradient = np.loadtxt(os.path.join(os.environ['PIPELINEDIR'], '2_compute_gradient', 'out','pnc_grads_template.txt'))[:,g]
-
-
 # In[12]:
 
 
-A = np.load(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'store', 'A.npy'))
+g = 0
+gradient = np.loadtxt(os.path.join(os.environ['PIPELINEDIR'], '2_compute_gradient', 'out', parc_str+'_'+str(parc_scale)+'_'+'pnc_grads_template.txt'))[:,g]
+
+
+# In[13]:
+
+
+A = np.load(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'store', outfile_prefix+'A.npy'))
 A = np.mean(A, axis = 2)
 np.any(np.isnan(A))
 
 
-# In[13]:
+# In[14]:
 
 
 r_vals = pd.DataFrame(index = metrics, columns = phenos)
@@ -156,19 +164,19 @@ for metric in metrics:
 p_vals = get_fdr_p_df(p_vals, rows = True)
 
 
-# In[14]:
+# In[15]:
 
 
 r_vals
 
 
-# In[15]:
+# In[16]:
 
 
 r_vals[p_vals < .05]
 
 
-# In[16]:
+# In[17]:
 
 
 my_ac = ave_control(A)
@@ -178,7 +186,7 @@ my_ac = sp.stats.boxcox(my_ac)[0]
 my_str = sp.stats.boxcox(my_str)[0]
 
 
-# In[17]:
+# In[18]:
 
 
 f = sns.jointplot(x = my_str, y = my_ac)
@@ -191,29 +199,29 @@ f.ax_joint.collections[0].set_alpha(0)
 f.ax_joint.set_xlabel('Regional Strength')
 f.ax_joint.set_ylabel('Regional Average Controllability')
 f.ax_joint.tick_params(pad = -2)
-f.savefig('regional_str_vs_ac.png', dpi = 300, bbox_inches = 'tight')
-
-
-# In[18]:
-
-
-sp.stats.pearsonr(my_ac,my_str)
+f.savefig(outfile_prefix+'regional_str_vs_ac.png', dpi = 300, bbox_inches = 'tight')
 
 
 # In[19]:
 
 
-sp.stats.spearmanr(my_ac,my_str)
+sp.stats.pearsonr(my_ac,my_str)
 
 
 # In[20]:
+
+
+sp.stats.spearmanr(my_ac,my_str)
+
+
+# In[21]:
 
 
 c_params = np.array([10, 100, 1000, 10000])
 c_params
 
 
-# In[21]:
+# In[22]:
 
 
 ac_orig_r = np.zeros(c_params.shape,)
@@ -227,19 +235,19 @@ for i, c_param in enumerate(c_params):
     ac_str_r[i] = sp.stats.spearmanr(my_str,ac_tmp)[0]
 
 
-# In[22]:
+# In[23]:
 
 
 ac_orig_r[-1]
 
 
-# In[23]:
+# In[24]:
 
 
 ac_str_r[-1]
 
 
-# In[24]:
+# In[25]:
 
 
 f = sns.jointplot(x = c_params, y = ac_orig_r)
@@ -250,10 +258,10 @@ f.ax_joint.collections[0].set_alpha(0)
 f.ax_joint.set_xlabel('C params')
 f.ax_joint.set_ylabel('corr(ac_orig,ac)')
 f.ax_joint.tick_params(pad = -2)
-f.savefig('regional_c_vs_corr(ac_orig,ac).png', dpi = 300, bbox_inches = 'tight')
+f.savefig(outfile_prefix+'regional_c_vs_corr(ac_orig,ac).png', dpi = 300, bbox_inches = 'tight')
 
 
-# In[25]:
+# In[26]:
 
 
 f = sns.jointplot(x = c_params, y = ac_str_r)
@@ -264,12 +272,12 @@ f.ax_joint.collections[0].set_alpha(0)
 f.ax_joint.set_xlabel('C params')
 f.ax_joint.set_ylabel('corr(str,ac)')
 f.ax_joint.tick_params(pad = -2)
-f.savefig('regional_c_vs_corr(str,ac).png', dpi = 300, bbox_inches = 'tight')
+f.savefig(outfile_prefix+'regional_c_vs_corr(str,ac).png', dpi = 300, bbox_inches = 'tight')
 
 
 # ## Correlation between (ac,str) cross-subject similarity and gradient value
 
-# In[26]:
+# In[27]:
 
 
 df_str = df_node.filter(regex = 'str')
@@ -277,7 +285,7 @@ df_ac = df_node.filter(regex = 'ac')
 ac_str_corr = df_str.corrwith(df_ac.set_axis(df_str.columns, axis='columns', inplace=False), method = 'pearson')
 
 
-# In[27]:
+# In[28]:
 
 
 f, ax = plt.subplots()
@@ -290,22 +298,22 @@ ax.set_ylabel('Pearson(str,ac)')
 ax.set_ylim([0.25,0.9])
 ax.set_xlim([-0.12,0.12])
 ax.tick_params(pad = -2)
-f.savefig('regional_gradient_'+str(g)+'_vs_corr(str,ac).svg', dpi = 300, bbox_inches = 'tight')
-
-
-# In[28]:
-
-
-sp.stats.pearsonr(gradient,ac_str_corr)
+f.savefig(outfile_prefix+'regional_gradient_'+str(g)+'_vs_corr(str,ac).svg', dpi = 300, bbox_inches = 'tight')
 
 
 # In[29]:
 
 
-ac_str_corr.mean()
+sp.stats.pearsonr(gradient,ac_str_corr)
 
 
 # In[30]:
+
+
+ac_str_corr.mean()
+
+
+# In[31]:
 
 
 r_vals = np.zeros(len(c_params))
@@ -329,5 +337,5 @@ for i, c_param in enumerate(c_params):
     ax.set_ylim([0.25,1])
     ax.set_xlim([-0.12,0.12])
     ax.tick_params(pad = -2)
-    f.savefig('regional_gradient_'+str(g)+'_vs_corr(str,ac)_c_'+str(c_param)+'.svg', dpi = 300, bbox_inches = 'tight')        
+    f.savefig(outfile_prefix+'regional_gradient_'+str(g)+'_vs_corr(str,ac)_c_'+str(c_param)+'.svg', dpi = 300, bbox_inches = 'tight')        
 

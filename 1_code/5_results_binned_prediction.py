@@ -46,16 +46,24 @@ edge_weight = 'streamlineCount'
 parcel_names, parcel_loc, drop_parcels, num_parcels = set_proj_env(parc_str = parc_str, parc_scale = parc_scale, edge_weight = edge_weight)
 
 
+# In[5]:
+
+
+# output file prefix
+outfile_prefix = parc_str+'_'+str(parc_scale)+'_'+edge_weight+'_'
+outfile_prefix
+
+
 # ### Setup directory variables
 
-# In[5]:
+# In[6]:
 
 
 print(os.environ['PIPELINEDIR'])
 if not os.path.exists(os.environ['PIPELINEDIR']): os.makedirs(os.environ['PIPELINEDIR'])
 
 
-# In[6]:
+# In[7]:
 
 
 figdir = os.path.join(os.environ['OUTPUTDIR'], 'figs')
@@ -63,7 +71,7 @@ print(figdir)
 if not os.path.exists(figdir): os.makedirs(figdir)
 
 
-# In[7]:
+# In[8]:
 
 
 phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg']
@@ -82,44 +90,44 @@ seeds = np.arange(0,100)
 
 # ### Model options
 
-# In[8]:
+# In[9]:
 
 
 a = 1; alg = algs[a]; print(alg)
 s = 1; score = scores[s]; print(score)
 
 
-# In[9]:
+# In[10]:
 
 
 my_scorer = make_scorer(root_mean_squared_error, greater_is_better = False)
 my_scorer
 
 
-# In[10]:
+# In[11]:
 
 
 regs, param_grid = get_reg()
 
 
-# In[11]:
+# In[12]:
 
 
 n_splits = 10
 
 
-# In[12]:
+# In[13]:
 
 
 g = 0
-gradient = np.loadtxt(os.path.join(os.environ['PIPELINEDIR'], '2_compute_gradient', 'out','pnc_grads_template.txt'))[:,g]
+gradient = np.loadtxt(os.path.join(os.environ['PIPELINEDIR'], '2_compute_gradient', 'out', parc_str+'_'+str(parc_scale)+'_'+'pnc_grads_template.txt'))[:,g]
 # sort gradient
 sort_idx = np.argsort(gradient)
 
 
 # ## Setup plots
 
-# In[13]:
+# In[14]:
 
 
 if not os.path.exists(figdir): os.makedirs(figdir)
@@ -130,36 +138,36 @@ cmap = my_get_cmap('pair')
 
 # ## Load data
 
-# In[14]:
-
-
-df_node = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'out', 'X.csv'))
-df_node.set_index(['bblid', 'scanid'], inplace = True)
-
-df_node_ac_overc = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'out', 'X_ac_c.csv'))
-df_node_ac_overc.set_index(['bblid', 'scanid'], inplace = True)
-
-df_pheno = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'out', 'y.csv'))
-df_pheno.set_index(['bblid', 'scanid'], inplace = True)
-
-c = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'out', 'c.csv'))
-c.set_index(['bblid', 'scanid'], inplace = True); print(c.shape)
-c.columns
-
-
 # In[15]:
 
 
-(np.sum(c.loc[:,'sex'] == 1)/c.shape[0]) * 100
+df_node = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'out', outfile_prefix+'X.csv'))
+df_node.set_index(['bblid', 'scanid'], inplace = True)
+
+df_node_ac_overc = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'out', outfile_prefix+'X_ac_c.csv'))
+df_node_ac_overc.set_index(['bblid', 'scanid'], inplace = True)
+
+df_pheno = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'out', outfile_prefix+'y.csv'))
+df_pheno.set_index(['bblid', 'scanid'], inplace = True)
+
+c = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'out', outfile_prefix+'c.csv'))
+c.set_index(['bblid', 'scanid'], inplace = True); print(c.shape)
+c.columns
 
 
 # In[16]:
 
 
-bin_size = 5
+(np.sum(c.loc[:,'sex'] == 1)/c.shape[0]) * 100
 
 
 # In[17]:
+
+
+bin_size = 5
+
+
+# In[18]:
 
 
 c_params = np.array([10, 100, 1000, 10000])
@@ -181,7 +189,7 @@ phenos_label = ['Psychosis (Positive)','Psychosis (Negative)']
 phenos_short = ['Psy. (pos)','Psy. (neg)']
 
 
-# In[18]:
+# In[19]:
 
 
 my_r = pd.DataFrame(index = metrics, columns = phenos)
@@ -262,18 +270,18 @@ for m, metric in enumerate(metrics):
         ax.set_title('X: ' + metrics_label[m] + '\n y: ' + phenos_label[p])
 
         if control_c == None:
-            f.savefig('gradient_'+str(g)+'_window_'+metric+'_'+pheno+'.svg', dpi = 300, bbox_inches = 'tight')
+            f.savefig(outfile_prefix+'gradient_'+str(g)+'_window_'+metric+'_'+pheno+'.svg', dpi = 300, bbox_inches = 'tight')
         else:
-            f.savefig('c_' + str(control_c) + '_gradient_'+str(g)+'_window_'+metric+'_'+pheno+'.svg', dpi = 300, bbox_inches = 'tight')
+            f.savefig(outfile_prefix+'c_' + str(control_c) + '_gradient_'+str(g)+'_window_'+metric+'_'+pheno+'.svg', dpi = 300, bbox_inches = 'tight')
 
 
-# In[19]:
+# In[20]:
 
 
 my_r
 
 
-# In[20]:
+# In[21]:
 
 
 my_pvals
