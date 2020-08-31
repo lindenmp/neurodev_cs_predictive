@@ -332,3 +332,26 @@ def cross_val_score_nuis(X, y, c, my_cv, reg, my_scorer):
         y_pred_out[te] = reg.predict(X_test)
         
     return accuracy, y_pred_out
+
+
+def assemble_df(numpy_array, algs, metrics, phenos):
+    df = pd.DataFrame(columns = ['score', 'alg', 'metric', 'pheno'])
+
+    for a, alg in enumerate(algs):
+        for m, metric in enumerate(metrics):
+            for p, pheno in enumerate(phenos):
+                df_tmp = pd.DataFrame(columns = df.columns)
+                df_tmp.loc[:,'score'] = numpy_array[:,a,m,p]
+                df_tmp.loc[:,'alg'] = alg
+                df_tmp.loc[:,'metric'] = metric
+                df_tmp.loc[:,'pheno'] = pheno
+
+                df = pd.concat((df, df_tmp), axis = 0)
+    
+    return df
+
+
+def get_exact_p(x,y):
+    pval = 2*np.min([np.mean(x-y>=0), np.mean(x-y<=0)])
+    
+    return pval
