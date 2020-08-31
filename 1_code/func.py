@@ -21,6 +21,16 @@ plt.rcParams['svg.fonttype'] = 'none'
 # Extra
 from scipy.linalg import svd, schur
 from numpy.matlib import repmat
+from statsmodels.stats import multitest
+
+# Sklearn
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import Ridge, Lasso, LinearRegression
+from sklearn.kernel_ridge import KernelRidge
+from sklearn.svm import SVR, LinearSVR
+
+
 
 def set_proj_env(parc_str = 'schaefer', parc_scale = 200, edge_weight = 'streamlineCount', extra_str = ''):
 
@@ -195,3 +205,130 @@ def ave_control(A, c = 1):
     
     return values
 
+
+def get_fdr_p(p_vals, alpha = 0.05):
+    out = multitest.multipletests(p_vals, alpha = alpha, method = 'fdr_bh')
+    p_fdr = out[1] 
+
+    return p_fdr
+
+
+def get_fdr_p_df(p_vals, alpha = 0.05, rows = False):
+    
+    if rows:
+        p_fdr = pd.DataFrame(index = p_vals.index, columns = p_vals.columns)
+        for row, data in p_vals.iterrows():
+            p_fdr.loc[row,:] = get_fdr_p(data.values)
+    else:
+        p_fdr = pd.DataFrame(index = p_vals.index,
+                            columns = p_vals.columns,
+                            data = np.reshape(get_fdr_p(p_vals.values.flatten(), alpha = alpha), p_vals.shape))
+
+    return p_fdr
+
+
+def corr_true_pred(y_true, y_pred):
+    if type(y_true) == np.ndarray:
+        y_true = y_true.flatten()
+    if type(y_pred) == np.ndarray:
+        y_pred = y_pred.flatten()
+        
+    r,p = sp.stats.pearsonr(y_true, y_pred)
+    return r
+
+
+def root_mean_squared_error(y_true, y_pred):
+    mse = np.mean((y_true - y_pred)**2, axis=0)
+    rmse = np.sqrt(mse)
+    return rmse
+
+
+def get_reg(num_params = 10):
+    regs = {'rr': Ridge(),
+            'lr': Lasso(),
+            'krr_lin': KernelRidge(kernel='linear'),
+            'krr_rbf': KernelRidge(kernel='rbf'),
+            'svr_lin': SVR(kernel='linear'),
+            'svr_rbf': SVR(kernel='rbf')
+            }
+    
+    # From the sklearn docs, gamma defaults to 1/n_features. In my cases that will be either 1/400 features = 0.0025 or 1/200 = 0.005.
+    # I'll set gamma to same range as alpha then [0.001 to 1] - this way, the defaults will be included in the gridsearch
+    param_grids = {'rr': {'reg__alpha': np.logspace(0, -3, num_params)},
+                    'lr': {'reg__alpha': np.logspace(0, -3, num_params)},
+                    'krr_lin': {'reg__alpha': np.logspace(0, -3, num_params)},
+                    'krr_rbf': {'reg__alpha': np.logspace(0, -3, num_params), 'reg__gamma': np.logspace(0, -3, num_params)},
+                    'svr_lin': {'reg__C': np.logspace(0, 4, num_params)},
+                    'svr_rbf': {'reg__C': np.logspace(0, 4, num_params), 'reg__gamma': np.logspace(0, -3, num_params)}
+                    }
+    
+    return regs, param_grids
+
+
+def get_stratified_cv(X, y, c = None, n_splits = 10):
+
+    # sort data on outcome variable in ascending order
+    idx = y.sort_values(ascending = True).index
+    if X.ndim == 2: X_sort = X.loc[idx,:]
+    elif X.ndim == 1: X_sort = X.loc[idx]
+    y_sort = y.loc[idx]
+    if c is not None:
+        if c.ndim == 2: c_sort = c.loc[idx,:]
+        elif c.ndim == 1: c_sort = c.loc[idx]
+    
+    # create custom stratified kfold on outcome variable
+    my_cv = []
+    for k in range(n_splits):
+        my_bool = np.zeros(y.shape[0]).astype(bool)
+        my_bool[np.arange(k,y.shape[0],n_splits)] = True
+
+        train_idx = np.where(my_bool == False)[0]
+        test_idx = np.where(my_bool == True)[0]
+        my_cv.append( (train_idx, test_idx) )
+
+    if c is not None:
+        return X_sort, y_sort, my_cv, c_sort
+    else:
+        return X_sort, y_sort, my_cv
+
+
+def cross_val_score_nuis(X, y, c, my_cv, reg, my_scorer):
+    
+    accuracy = np.zeros(len(my_cv),)
+    y_pred_out = np.zeros(y.shape)
+    
+    for k in np.arange(len(my_cv)):
+        tr = my_cv[k][0]
+        te = my_cv[k][1]
+
+        # Split into train test
+        X_train = X.iloc[tr,:]; X_test = X.iloc[te,:]
+        y_train = y.iloc[tr]; y_test = y.iloc[te]
+        c_train = c.iloc[tr,:]; c_test = c.iloc[te,:]
+
+        # standardize predictors
+        sc = StandardScaler(); sc.fit(X_train); X_train = sc.transform(X_train); X_test = sc.transform(X_test)
+        X_train = pd.DataFrame(data = X_train, index = X.iloc[tr,:].index, columns = X.iloc[tr,:].columns)
+        X_test = pd.DataFrame(data = X_test, index = X.iloc[te,:].index, columns = X.iloc[te,:].columns)
+
+        # standardize covariates
+        sc = StandardScaler(); sc.fit(c_train); c_train = sc.transform(c_train); c_test = sc.transform(c_test)
+        c_train = pd.DataFrame(data = c_train, index = c.iloc[tr,:].index, columns = c.iloc[tr,:].columns)
+        c_test = pd.DataFrame(data = c_test, index = c.iloc[te,:].index, columns = c.iloc[te,:].columns)
+
+        # regress nuisance (X)
+        nuis_reg = LinearRegression(); nuis_reg.fit(c_train, X_train)
+        X_pred = nuis_reg.predict(c_train); X_train = X_train - X_pred
+        X_pred = nuis_reg.predict(c_test); X_test = X_test - X_pred
+
+        # # regress nuisance (y)
+        # nuis_reg = LinearRegression(); nuis_reg.fit(c_train, y_train)
+        # y_pred = nuis_reg.predict(c_train); y_train = y_train - y_pred
+        # y_pred = nuis_reg.predict(c_test); y_test = y_test - y_pred
+
+        reg.fit(X_train, y_train)
+        accuracy[k] = my_scorer(reg, X_test, y_test)
+        
+        y_pred_out[te] = reg.predict(X_test)
+        
+    return accuracy, y_pred_out
