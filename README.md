@@ -11,9 +11,10 @@
     pip install jupyter_contrib_nbextensions && jupyter contrib nbextension install
 
 	# Statistics
-	pip install scipy statsmodels sklearn pingouin pygam brainspace shap
+	pip install scipy statsmodels sklearn pingouin pygam brainspace
 
 	# Pysurfer for plotting
+	pip install vtk==8.1.2
 	pip install mayavi
 	pip install PyQt5
 	jupyter nbextension install --py mayavi --user
@@ -21,7 +22,7 @@
 	jupyter nbextension enable --py widgetsnbextension
 	pip install pysurfer
 
-    cd /Users/lindenmp/Dropbox/Work/ResProjects/neurodev_cs_predictive
+    cd /Users/lindenmp/Google-Drive-Penn/work/research_projects/neurodev_cs_predictive
     conda env export > environment.yml
 	pip freeze > requirements.txt
 
@@ -34,16 +35,31 @@
     pip install ipython pandas numpy glob3
 
 	# Statistics
-	pip install scipy statsmodels sklearn pingouin
+	pip install scipy statsmodels sklearn
 
 	cd /cbica/home/parkesl/miniconda3/envs/neurodev_cs_predictive/
     conda env export > environment.yml
 	pip freeze > requirements.txt
 
 
-<!-- # Code
+# Code
 
-In the **code** subdirectory you will find the following Jupyter notebooks and .py scripts:
+## Processing
+
+- `0_get_sample.ipynb`
+- `1_compute_node_metrics.ipynb`
+- `2_compute_gradients.ipynb`
+
+## Results
+
+- `3_results_demographics_characteristics.ipynb`
+- `4_results_str_ac_correlations.ipynb`
+- `5_results_binned_prediction.ipynb`
+
+- `6_job_submitter.ipynb`
+- `7_results_model_performance.ipynb`
+
+<!-- In the **code** subdirectory you will find the following Jupyter notebooks and .py scripts:
 1. Pre-normative modeling scripts:
 - `get_train_test.ipynb`
 	- Performs initial ingest of PNC demographic data, participant exclusion based on various quality control.
