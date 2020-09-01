@@ -296,7 +296,7 @@ plt.scatter(x = gradient, y = ac_str_corr, marker = 'o', s = 10, c = gradient, c
 ax.set_xlabel('Regional gradient value')
 ax.set_ylabel('Pearson(str,ac)')
 ax.set_ylim([0.25,0.9])
-ax.set_xlim([-0.12,0.12])
+ax.set_xlim([-0.13,0.115])
 ax.tick_params(pad = -2)
 f.savefig(outfile_prefix+'regional_gradient_'+str(g)+'_vs_corr(str,ac).svg', dpi = 300, bbox_inches = 'tight')
 
