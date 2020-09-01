@@ -33,7 +33,7 @@ from matplotlib.ticker import FormatStrFormatter
 
 
 sys.path.append('/Users/lindenmp/Google-Drive-Penn/work/research_projects/neurodev_cs_predictive/1_code/')
-from func import set_proj_env, my_get_cmap, get_fdr_p, assemble_df, get_exact_p
+from func import set_proj_env, my_get_cmap, get_fdr_p, assemble_df, get_exact_p, get_fdr_p_df
 
 
 # In[4]:
@@ -302,9 +302,38 @@ plt.subplots_adjust(wspace=0.5)
 f.savefig(outfile_prefix+'performance_comparison_'+alg+'.svg', dpi = 300, bbox_inches = 'tight')
 
 
-# ### Correlate across scores
+# #### Permutation
 
 # In[22]:
+
+
+indir = predictiondir + 'predict_symptoms_scv_nuis'
+
+z_vals = pd.DataFrame(index = metrics, columns = phenos)
+p_vals = pd.DataFrame(index = metrics, columns = phenos)
+
+for m, metric in enumerate(metrics):
+    for p, pheno in enumerate(phenos):
+        accuracy_mean = np.loadtxt(os.path.join(indir, alg + '_' + score + '_' + metric + '_' + pheno, 'accuracy_mean_nuis.txt'))
+        permuted_acc = np.loadtxt(os.path.join(indir, alg + '_' + score + '_' + metric + '_' + pheno, 'permuted_acc_nuis.txt'))
+        
+        p_vals.loc[metric,pheno] = np.sum(permuted_acc >= accuracy_mean) / len(permuted_acc)
+
+# multiple comparisons
+p_vals = get_fdr_p_df(p_vals, rows = False)
+
+p_vals[p_vals < 0.05]
+
+
+# In[23]:
+
+
+p_vals
+
+
+# ### Correlate across scores
+
+# In[24]:
 
 
 indir = predictiondir + 'predict_symptoms_rcv_nuis'
@@ -317,7 +346,7 @@ for a, alg in enumerate(algs):
             accuracy_mean_nuis_rmse[:,a,m,p] = np.loadtxt(os.path.join(indir, alg + '_rmse_' + metric + '_' + pheno, 'accuracy_mean.txt'))
 
 
-# In[23]:
+# In[25]:
 
 
 indir = predictiondir + 'predict_symptoms_rcv_nuis'
@@ -330,7 +359,7 @@ for a, alg in enumerate(algs):
             accuracy_mean_nuis_corr[:,a,m,p] = np.loadtxt(os.path.join(indir, alg + '_corr_' + metric + '_' + pheno, 'accuracy_mean.txt'))
 
 
-# In[24]:
+# In[26]:
 
 
 rmse_corr_corr = np.zeros((len(algs), len(metrics), len(phenos)))
@@ -341,19 +370,19 @@ for a, alg in enumerate(algs):
             rmse_corr_corr[a,m,p] = sp.stats.pearsonr(accuracy_mean_nuis_rmse[:,a,m,p], accuracy_mean_nuis_corr[:,a,m,p])[0]
 
 
-# In[25]:
+# In[27]:
 
 
 rmse_corr_corr.mean()
 
 
-# In[26]:
+# In[28]:
 
 
 rmse_corr_corr.std()
 
 
-# In[27]:
+# In[29]:
 
 
 sns.distplot(rmse_corr_corr)
@@ -361,7 +390,7 @@ sns.distplot(rmse_corr_corr)
 
 # ### Load random splits nested cross-val (without nuis)
 
-# In[28]:
+# In[30]:
 
 
 nested_score_mean = np.load(os.path.join(predictiondir+'predict_symptoms_ncv', 'nested_score_mean.npy'))
@@ -378,7 +407,7 @@ print(nested_score_mean.shape)
 
 # ### Figure S5
 
-# In[29]:
+# In[31]:
 
 
 for metric in metrics:
@@ -413,7 +442,7 @@ for metric in metrics:
 
 # ### Figure S6
 
-# In[30]:
+# In[32]:
 
 
 stats = pd.DataFrame(index = phenos, columns = ['test_stat', 'pval'])
@@ -434,7 +463,7 @@ stats.loc[:,'pval_corr'] = get_fdr_p(stats.loc[:,'pval'])
 stats.loc[:,'sig'] = stats.loc[:,'pval_corr'] < 0.05
 
 
-# In[31]:
+# In[33]:
 
 
 f, ax = plt.subplots(1, len(phenos))
@@ -473,7 +502,7 @@ f.savefig(outfile_prefix+'performance_comparison_2_'+alg+'.svg', dpi = 300, bbox
 
 # ### Correlate across scores
 
-# In[32]:
+# In[34]:
 
 
 nested_score_mean = np.load(os.path.join(predictiondir+'predict_symptoms_ncv', 'nested_score_mean.npy'))
@@ -483,7 +512,7 @@ nested_score_mean_corr = nested_score_mean[:,:,0,:,:]
 nested_score_mean_rmse = nested_score_mean[:,:,1,:,:]
 
 
-# In[33]:
+# In[35]:
 
 
 rmse_corr_corr = np.zeros((len(algs), len(metrics), len(phenos)))
@@ -494,19 +523,19 @@ for a, alg in enumerate(algs):
             rmse_corr_corr[a,m,p] = sp.stats.pearsonr(nested_score_mean_rmse[:,a,m,p], nested_score_mean_corr[:,a,m,p])[0]
 
 
-# In[34]:
+# In[36]:
 
 
 rmse_corr_corr.mean()
 
 
-# In[35]:
+# In[37]:
 
 
 rmse_corr_corr.std()
 
 
-# In[36]:
+# In[38]:
 
 
 sns.distplot(rmse_corr_corr)
