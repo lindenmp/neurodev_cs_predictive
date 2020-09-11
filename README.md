@@ -11,7 +11,7 @@
     pip install jupyter_contrib_nbextensions && jupyter contrib nbextension install
 
 	# Statistics
-	pip install scipy statsmodels sklearn pingouin pygam brainspace
+	pip install scipy statsmodels sklearn pingouin pygam brainspace bctpy
 
 	# Pysurfer for plotting
 	pip install vtk==8.1.2
