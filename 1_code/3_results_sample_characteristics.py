@@ -27,7 +27,7 @@ plt.rcParams['svg.fonttype'] = 'none'
 
 
 sys.path.append('/Users/lindenmp/Google-Drive-Penn/work/research_projects/neurodev_cs_predictive/1_code/')
-from func import set_proj_env, my_get_cmap
+from func import set_proj_env, my_get_cmap, get_fdr_p
 
 
 # In[3]:
@@ -79,7 +79,7 @@ phenos_short = ['Ov. Psy.','Psy. (pos)','Psy. (neg)']
 
 if not os.path.exists(figdir): os.makedirs(figdir)
 os.chdir(figdir)
-sns.set(style='white', context = 'paper', font_scale = 1)
+sns.set(style='white', context = 'talk', font_scale = 0.8)
 cmap = my_get_cmap('pair')
 
 
@@ -101,16 +101,24 @@ df['sex'].unique()
 # In[11]:
 
 
-(np.sum(df.loc[:,'sex'] == 1)/df.shape[0]) * 100
+print(np.sum(df.loc[:,'sex'] == 1))
+print((np.sum(df.loc[:,'sex'] == 1)/df.shape[0]) * 100)
 
 
 # In[12]:
 
 
-df['ageAtScan1_Years'].mean()
+print(np.sum(df.loc[:,'sex'] == 2))
+print((np.sum(df.loc[:,'sex'] == 2)/df.shape[0]) * 100)
 
 
 # In[13]:
+
+
+df['ageAtScan1_Years'].mean()
+
+
+# In[14]:
 
 
 df['ageAtScan1_Years'].std()
@@ -118,46 +126,109 @@ df['ageAtScan1_Years'].std()
 
 # ### Sex
 
-# In[14]:
+# In[15]:
 
 
-f, ax = plt.subplots(1,3)
-f.set_figwidth(15)
+stats = pd.DataFrame(index = phenos, columns = ['test_stat', 'pval'])
+
+for i, pheno in enumerate(phenos):
+    x = df.loc[df.loc[:,'sex'] == 1,pheno]
+    y = df.loc[df.loc[:,'sex'] == 2,pheno]
+    
+    test_output = sp.stats.ttest_ind(x,y)
+    stats.loc[pheno,'test_stat'] = test_output[0]
+    stats.loc[pheno,'pval'] = test_output[1]
+    
+stats.loc[:,'pval_corr'] = get_fdr_p(stats.loc[:,'pval'])
+stats.loc[:,'sig'] = stats.loc[:,'pval_corr'] < 0.05
+
+stats
+
+
+# In[16]:
+
+
+f, ax = plt.subplots(1,len(phenos))
+f.set_figwidth(len(phenos)*5)
 f.set_figheight(5)
 
 # sex: 1=male, 2=female
 for i, pheno in enumerate(phenos):
-    x = df.loc[df['sex'] == 1,pheno]
-    y = df.loc[df['sex'] == 2,pheno]
-    stats_output = sp.stats.ttest_ind(x,y)
-    if stats_output[1] < .05/len(phenos):
-        print(pheno, np.mean(x)-np.mean(y), stats_output)
-        
-    sns.distplot(x, ax=ax[i], label = 'males')
-    sns.distplot(y, ax=ax[i], label = 'females')
-    ax[i].legend()
+    x = df.loc[df.loc[:,'sex'] == 1,pheno]
+    sns.distplot(x, ax = ax[i], label = 'male')
 
+    y = df.loc[df.loc[:,'sex'] == 2,pheno]
+    sns.distplot(y, ax = ax[i], label = 'female')
+    
+    if i == 0:
+        ax[i].legend()
+    ax[i].set_xlabel(pheno)
+
+    if stats.loc[pheno,'sig']:
+        ax[i].set_title('t-stat:' + str(np.round(stats.loc[pheno,'test_stat'],2)) + ', p-value: ' + str(np.round(stats.loc[pheno,'pval_corr'],4)), fontweight="bold")
+    else:
+        ax[i].set_title('t-stat:' + str(np.round(stats.loc[pheno,'test_stat'],2)) + ', p-value: ' + str(np.round(stats.loc[pheno,'pval_corr'],4)))
+        
 f.savefig(outfile_prefix+'symptoms_distributions_sex.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
 
 
 # ### Age
 
-# In[15]:
+# In[17]:
 
 
-f, ax = plt.subplots(1,3)
-f.set_figwidth(15)
-f.set_figheight(5)
+stats = pd.DataFrame(index = phenos, columns = ['r', 'pval'])
 
 x = df['ageAtScan1_Years']
-# sex: 1=male, 2=female
 for i, pheno in enumerate(phenos):
     y = df[pheno]
     r,p = sp.stats.pearsonr(x,y)
-    if p < .05/len(phenos):
-        print(pheno, r, p)
-        
+    
+    stats.loc[pheno,'r'] = r
+    stats.loc[pheno,'pval'] = p
+    
+stats.loc[:,'pval_corr'] = get_fdr_p(stats.loc[:,'pval'])
+stats.loc[:,'sig'] = stats.loc[:,'pval_corr'] < 0.05
+
+stats
+
+
+# In[18]:
+
+
+f, ax = plt.subplots(1,len(phenos))
+f.set_figwidth(len(phenos)*5)
+f.set_figheight(5)
+
+x = df['ageAtScan1_Years']
+for i, pheno in enumerate(phenos):
+    y = df[pheno]
     sns.regplot(x, y, ax=ax[i])
     
+    if stats.loc[pheno,'sig']:
+        ax[i].set_title('r:' + str(np.round(stats.loc[pheno,'r'],2)) + ', p-value: ' + str(np.round(stats.loc[pheno,'pval_corr'],4)), fontweight="bold")
+    else:
+        ax[i].set_title('r:' + str(np.round(stats.loc[pheno,'r'],2)) + ', p-value: ' + str(np.round(stats.loc[pheno,'pval_corr'],4)))
+    
 f.savefig(outfile_prefix+'symptoms_correlations_age.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
+
+
+# ### Diagnostic table
+
+# In[19]:
+
+
+to_screen = ['goassessSmryPsy', 'goassessSmryMood', 'goassessSmryEat', 'goassessSmryAnx', 'goassessSmryBeh']
+print(np.sum(df.loc[:,to_screen] == 4))
+print(np.sum(df.loc[:,to_screen] == 4)/df.shape[0]*100)
+
+
+# In[20]:
+
+
+to_screen = ['goassessSmryPsy','goassessSmryMan', 'goassessSmryDep', 'goassessSmryBul', 'goassessSmryAno', 'goassessSmrySoc',
+             'goassessSmryPan', 'goassessSmryAgr', 'goassessSmryOcd', 'goassessSmryPtd', 'goassessSmryAdd',
+            'goassessSmryOdd', 'goassessSmryCon']
+print(np.sum(df.loc[:,to_screen] == 4))
+print(np.sum(df.loc[:,to_screen] == 4)/df.shape[0]*100)
 
