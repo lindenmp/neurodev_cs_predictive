@@ -83,6 +83,8 @@ rest_qa = pd.read_csv(os.path.join(os.environ['DATADIR'], 'external/pncDataFreez
 demog = pd.read_csv(os.path.join(os.environ['DATADIR'], 'external/pncDataFreeze20170905/n1601_dataFreeze/demographics/n1601_demographics_go1_20161212.csv'))
 # Brain volume
 brain_vol = pd.read_csv(os.path.join(os.environ['DATADIR'], 'external/pncDataFreeze20170905/n1601_dataFreeze/neuroimaging/t1struct/n1601_ctVol20170412.csv'))
+# Clinical diagnostic 
+clinical = pd.read_csv(os.path.join(os.environ['DATADIR'], 'external/pncDataFreeze20170905/n1601_dataFreeze/clinical/n1601_goassess_psych_summary_vars_20131014.csv'))
 # GOASSESS Bifactor scores
 goassess = pd.read_csv(os.path.join(os.environ['DATADIR'], 'external/GO1_clinical_factor_scores_psychosis_split_BIFACTOR.csv'))
 
@@ -94,21 +96,16 @@ df = pd.merge(df, dti_qa, on=['scanid', 'bblid']) # dti_qa
 df = pd.merge(df, rest_qa, on=['scanid', 'bblid']) # rest_qa
 df = pd.merge(df, demog, on=['scanid', 'bblid']) # demog
 df = pd.merge(df, brain_vol, on=['scanid', 'bblid']) # brain_vol
+df = pd.merge(df, clinical, on=['scanid', 'bblid']) # clinical
 df = pd.merge(df, goassess, on=['bblid']) # goassess
 
 print(df.shape[0])
 df.set_index(['bblid', 'scanid'], inplace = True)
 
 
-# In[8]:
-
-
-df.head()
-
-
 # # Filter subjects
 
-# In[9]:
+# In[8]:
 
 
 # 1) Primary sample filter
@@ -126,32 +123,32 @@ df = df[df['dti64Exclude'] == 0]
 print('N after Diffusion exclusion:', df.shape[0])
 
 
-# In[10]:
+# In[9]:
 
 
 df['dti64QAManualScore'].unique()
 
 
-# In[11]:
+# In[10]:
 
 
 np.sum(df['averageManualRating'] == 2)
 
 
-# In[12]:
+# In[11]:
 
 
 np.sum(df['dti64QAManualScore'] == 2)
 
 
-# In[13]:
+# In[12]:
 
 
 # Convert age to years
 df['ageAtScan1_Years'] = np.round(df.ageAtScan1/12, decimals=1)
 
 
-# In[14]:
+# In[13]:
 
 
 # find unique ages
@@ -161,14 +158,14 @@ print('There are', age_unique.shape[0], 'unique age points')
 
 # ## Symptom dimensions
 
-# In[15]:
+# In[14]:
 
 
 phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg']
 print(phenos)
 
 
-# In[16]:
+# In[15]:
 
 
 for pheno in phenos:
@@ -178,7 +175,7 @@ for pheno in phenos:
         df.loc[df.loc[:,pheno].isna(),pheno] = x
 
 
-# In[17]:
+# In[16]:
 
 
 # Normalize
@@ -196,7 +193,7 @@ for i, pheno in enumerate(phenos):
 print(np.sum(rank_r < 1))
 
 
-# In[18]:
+# In[17]:
 
 
 df.loc[:,phenos].var()
@@ -204,18 +201,22 @@ df.loc[:,phenos].var()
 
 # ## Export
 
-# In[19]:
+# In[18]:
 
 
 header = ['squeakycleanExclude','ageAtScan1', 'ageAtScan1_Years','sex','race2','handednessv2', 'averageManualRating', 'dti64QAManualScore', 'restProtocolValidationStatus', 'restExclude',
-          'dti64MeanAbsRMS','dti64MeanRelRMS','dti64MaxAbsRMS','dti64MaxRelRMS','mprage_antsCT_vol_TBV', 'averageManualRating',
+          'dti64MeanAbsRMS','dti64MeanRelRMS','dti64MaxAbsRMS','dti64MaxRelRMS','mprage_antsCT_vol_TBV', 'averageManualRating',  'goassessSmryMood', 'goassessSmryMan', 'goassessSmryDep',
+          'goassessSmryEat', 'goassessSmryBul', 'goassessSmryAno', 'goassessSmryAnx', 'goassessSmryGad', 'goassessSmrySep', 'goassessSmryPhb', 'goassessSmrySoc', 'goassessSmryPan',
+          'goassessSmryAgr', 'goassessSmryOcd', 'goassessSmryPtd', 'goassessSmryPsy', 'goassessSmryDel', 'goassessSmryHal', 'goassessSmryHalAv', 'goassessSmryHalAs', 'goassessSmryHalVh',
+          'goassessSmryHalOh', 'goassessSmryHalTh', 'goassessSmryBeh', 'goassessSmryAdd', 'goassessSmryOdd', 'goassessSmryCon', 'goassessSmryPrimePos1', 'goassessSmryPrimeTot',
+          'goassessSmryPrimePos2', 'goassessSmryPsychOverallRtg',
           'Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg']
 df.to_csv(os.path.join(outputdir, 'df.csv'), columns = header)
 
 
 # # Plots
 
-# In[20]:
+# In[19]:
 
 
 if not os.path.exists(figdir): os.makedirs(figdir)
@@ -229,7 +230,7 @@ phenos_label = ['Overall Psychopathology','Psychosis (Positive)','Psychosis (Neg
 
 # ## Age
 
-# In[21]:
+# In[20]:
 
 
 f, axes = plt.subplots(1,2)
@@ -261,7 +262,7 @@ f.savefig('age_distributions.png', dpi = 300, bbox_inches = 'tight', pad_inches 
 
 # ## Symptom dimensions
 
-# In[22]:
+# In[21]:
 
 
 df_rc = pd.melt(df, value_vars = phenos)
@@ -279,7 +280,7 @@ f.savefig('symptoms_distributions.png', dpi = 300, bbox_inches = 'tight', pad_in
 
 # ### Export sample for FC gradients
 
-# In[23]:
+# In[22]:
 
 
 # 4) rs-fMRI exclusion
@@ -288,7 +289,7 @@ df = df[df['restExclude'] == 0]
 print('N after rs-fMRI exclusion:', df.shape[0])
 
 
-# In[24]:
+# In[23]:
 
 
 df.to_csv(os.path.join(outputdir, 'df_gradients.csv'), columns = header)
