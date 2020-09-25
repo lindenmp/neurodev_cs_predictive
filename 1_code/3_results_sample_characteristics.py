@@ -218,17 +218,85 @@ f.savefig(outfile_prefix+'symptoms_correlations_age.png', dpi = 300, bbox_inches
 # In[19]:
 
 
-to_screen = ['goassessSmryPsy', 'goassessSmryMood', 'goassessSmryEat', 'goassessSmryAnx', 'goassessSmryBeh']
-print(np.sum(df.loc[:,to_screen] == 4))
-print(np.sum(df.loc[:,to_screen] == 4)/df.shape[0]*100)
+# to_screen = ['goassessSmryPsy', 'goassessSmryMood', 'goassessSmryEat', 'goassessSmryAnx', 'goassessSmryBeh']
+# counts = np.sum(df.loc[:,to_screen] == 4)
+# print(counts)
+# print(counts/df.shape[0]*100)
 
 
 # In[20]:
 
 
-to_screen = ['goassessSmryPsy','goassessSmryMan', 'goassessSmryDep', 'goassessSmryBul', 'goassessSmryAno', 'goassessSmrySoc',
+df['goassessDxpmr4_bin'] = df.loc[:,'goassessDxpmr4'] == '4PS'
+df['goassessDxpmr4_bin'] = df['goassessDxpmr4_bin'].astype(int)*4
+
+
+# In[21]:
+
+
+to_screen = ['goassessDxpmr4_bin','goassessSmryMan', 'goassessSmryDep', 'goassessSmryBul', 'goassessSmryAno', 'goassessSmrySoc',
              'goassessSmryPan', 'goassessSmryAgr', 'goassessSmryOcd', 'goassessSmryPtd', 'goassessSmryAdd',
             'goassessSmryOdd', 'goassessSmryCon']
-print(np.sum(df.loc[:,to_screen] == 4))
-print(np.sum(df.loc[:,to_screen] == 4)/df.shape[0]*100)
+counts = np.sum(df.loc[:,to_screen] == 4)
+print(counts)
+print(counts/df.shape[0]*100)
+
+
+# In[22]:
+
+
+to_keep = counts[counts >= 50].index
+list(to_keep)
+
+
+# In[23]:
+
+
+counts[counts >= 50]
+
+
+# In[24]:
+
+
+my_xticklabels = ['Psychosis spectrum (n=303)',
+                 'Depression (n=156)',
+                 'Social anxiety disorder (n=261)',
+                 'Agoraphobia (n=61)',
+                 'PTSD (n=136)',
+                 'ADHD (n=168)',
+                 'ODD (n=353)',
+                 'Conduct disorder (n=85)']
+
+
+# In[25]:
+
+
+sns.set(style='white', context = 'paper', font_scale = 1)
+
+
+# In[26]:
+
+
+f, ax = plt.subplots(1,len(phenos))
+f.set_figwidth(len(phenos)*2.5)
+f.set_figheight(2)
+
+for i, pheno in enumerate(phenos):
+    mean_scores = np.zeros(len(to_keep))
+    for j, diagnostic_score in enumerate(to_keep):
+        idx = df.loc[:,diagnostic_score] == 4
+        mean_scores[j] = df.loc[idx,pheno].mean()
+    
+    ax[i].bar(x = np.arange(0,len(mean_scores)), height = mean_scores, color = 'w', edgecolor = 'k', linewidth = 1.5)
+    ax[i].set_ylim([-.2,1.2])
+    ax[i].set_xticks(np.arange(0,len(mean_scores)))
+    ax[i].set_xticklabels(my_xticklabels, rotation = 90)
+    ax[i].tick_params(pad = -2)
+    ax[i].set_title(phenos_label[i])
+    if i == 1:
+        ax[i].set_xlabel('Diagnostic group')
+    if i == 0:
+        ax[i].set_ylabel('Factor score (z)')
+    
+f.savefig(outfile_prefix+'symptom_dimensions_groups.svg', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
 

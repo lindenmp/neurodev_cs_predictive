@@ -85,6 +85,7 @@ demog = pd.read_csv(os.path.join(os.environ['DATADIR'], 'external/pncDataFreeze2
 brain_vol = pd.read_csv(os.path.join(os.environ['DATADIR'], 'external/pncDataFreeze20170905/n1601_dataFreeze/neuroimaging/t1struct/n1601_ctVol20170412.csv'))
 # Clinical diagnostic 
 clinical = pd.read_csv(os.path.join(os.environ['DATADIR'], 'external/pncDataFreeze20170905/n1601_dataFreeze/clinical/n1601_goassess_psych_summary_vars_20131014.csv'))
+clinical_ps = pd.read_csv(os.path.join(os.environ['DATADIR'], 'external/pncDataFreeze20170905/n1601_dataFreeze/clinical/n1601_diagnosis_dxpmr_20170509.csv'))
 # GOASSESS Bifactor scores
 goassess = pd.read_csv(os.path.join(os.environ['DATADIR'], 'external/GO1_clinical_factor_scores_psychosis_split_BIFACTOR.csv'))
 
@@ -97,6 +98,7 @@ df = pd.merge(df, rest_qa, on=['scanid', 'bblid']) # rest_qa
 df = pd.merge(df, demog, on=['scanid', 'bblid']) # demog
 df = pd.merge(df, brain_vol, on=['scanid', 'bblid']) # brain_vol
 df = pd.merge(df, clinical, on=['scanid', 'bblid']) # clinical
+df = pd.merge(df, clinical_ps, on=['scanid', 'bblid']) # clinical
 df = pd.merge(df, goassess, on=['bblid']) # goassess
 
 print(df.shape[0])
@@ -210,6 +212,7 @@ header = ['squeakycleanExclude','ageAtScan1', 'ageAtScan1_Years','sex','race2','
           'goassessSmryAgr', 'goassessSmryOcd', 'goassessSmryPtd', 'goassessSmryPsy', 'goassessSmryDel', 'goassessSmryHal', 'goassessSmryHalAv', 'goassessSmryHalAs', 'goassessSmryHalVh',
           'goassessSmryHalOh', 'goassessSmryHalTh', 'goassessSmryBeh', 'goassessSmryAdd', 'goassessSmryOdd', 'goassessSmryCon', 'goassessSmryPrimePos1', 'goassessSmryPrimeTot',
           'goassessSmryPrimePos2', 'goassessSmryPsychOverallRtg',
+          'goassessDxpmr4',
           'Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg']
 df.to_csv(os.path.join(outputdir, 'df.csv'), columns = header)
 
