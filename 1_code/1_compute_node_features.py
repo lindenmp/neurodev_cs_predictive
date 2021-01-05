@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import nibabel as nib
 import scipy.io as sio
+from tqdm import tqdm
 
 # Stats
 import scipy as sp
@@ -26,20 +27,35 @@ plt.rcParams['svg.fonttype'] = 'none'
 # In[2]:
 
 
-sys.path.append('/Users/lindenmp/Google-Drive-Penn/work/research_projects/neurodev_cs_predictive/1_code/')
-from func import set_proj_env, rank_int, node_strength, ave_control
+from networkx import from_numpy_matrix, degree_centrality, closeness_centrality, betweenness_centrality, subgraph_centrality
 
 
 # In[3]:
 
 
-parc_str = 'schaefer'
-parc_scale = 200
-edge_weight = 'streamlineCount'
-parcel_names, parcel_loc, drop_parcels, num_parcels = set_proj_env(parc_str = parc_str, parc_scale = parc_scale, edge_weight = edge_weight)
+sys.path.append('/Users/lindenmp/Google-Drive-Penn/work/research_projects/neurodev_cs_predictive/1_code/')
+from func import set_proj_env, rank_int, node_strength, ave_control
 
 
 # In[4]:
+
+
+parc_str = 'schaefer' # 'schaefer' 'lausanne' 'glasser'
+parc_scale = 200 # 200/400 | 125/250 | 360
+edge_weight = 'streamlineCount' # 'streamlineCount' 'volNormStreamline'
+parcel_names, parcel_loc, drop_parcels, num_parcels = set_proj_env(parc_str = parc_str, parc_scale = parc_scale, edge_weight = edge_weight)
+
+
+# In[5]:
+
+
+if parc_str == 'schaefer' or parc_str == 'glasser':
+    exclude_str = 't1Exclude'
+else:
+    exclude_str = 'fsFinalExclude'
+
+
+# In[6]:
 
 
 # output file prefix
@@ -47,16 +63,25 @@ outfile_prefix = parc_str+'_'+str(parc_scale)+'_'+edge_weight+'_'
 outfile_prefix
 
 
+# In[7]:
+
+
+# we want to calculate conn features including subcortex
+# drop brainstem but retain subcortex.
+if parc_str == 'lausanne':
+    num_parcels = len(parcel_loc[parcel_loc != 2])
+
+
 # ### Setup directory variables
 
-# In[5]:
+# In[8]:
 
 
 print(os.environ['PIPELINEDIR'])
 if not os.path.exists(os.environ['PIPELINEDIR']): os.makedirs(os.environ['PIPELINEDIR'])
 
 
-# In[6]:
+# In[9]:
 
 
 storedir = os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'store')
@@ -68,7 +93,7 @@ print(outputdir)
 if not os.path.exists(outputdir): os.makedirs(outputdir)
 
 
-# In[7]:
+# In[10]:
 
 
 figdir = os.path.join(os.environ['OUTPUTDIR'], 'figs')
@@ -78,16 +103,16 @@ if not os.path.exists(figdir): os.makedirs(figdir)
 
 # ## Load data
 
-# In[8]:
+# In[11]:
 
 
 # Load data
-df = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '0_get_sample', 'out', 'df.csv'))
+df = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '0_get_sample', 'out', exclude_str+'_df.csv'))
 df.set_index(['bblid', 'scanid'], inplace = True)
 print(df.shape)
 
 
-# In[9]:
+# In[12]:
 
 
 # Missing data file for this subject only for schaefer 200
@@ -95,28 +120,33 @@ if parc_scale == 200:
     df.drop(labels = (112598, 5161), inplace=True)
 
 
-# In[10]:
+# In[13]:
 
 
 # output dataframe
 str_labels = ['str_' + str(i) for i in range(num_parcels)]
 ac_labels = ['ac_' + str(i) for i in range(num_parcels)]
+bc_labels = ['bc_' + str(i) for i in range(num_parcels)]
+cc_labels = ['cc_' + str(i) for i in range(num_parcels)]
+sgc_labels = ['sgc_' + str(i) for i in range(num_parcels)]
 
-df_node = pd.DataFrame(index = df.index, columns = str_labels + ac_labels)
+df_node = pd.DataFrame(index = df.index, columns = str_labels + ac_labels + bc_labels + cc_labels + sgc_labels)
 print(df_node.shape)
 
 
 # ## Load in structural connectivity matrices
 
-# In[11]:
+# In[14]:
 
 
 # subject filter
 subj_filt = np.zeros((df.shape[0],)).astype(bool)
 
 
-# In[12]:
+# In[15]:
 
+
+print(os.environ['CONN_STR'])
 
 A = np.zeros((num_parcels, num_parcels, df.shape[0]))
 for (i, (index, row)) in enumerate(df.iterrows()):
@@ -127,9 +157,9 @@ for (i, (index, row)) in enumerate(df.iterrows()):
     if len(full_path) > 0:
         mat_contents = sio.loadmat(full_path[0])
         a = mat_contents[os.environ['CONN_STR']]
-        if parc_str == 'lausanne' and parc_variant == 'cortex_only':
-            a = a[parcel_loc == 1,:]
-            a = a[:,parcel_loc == 1]
+        if parc_str == 'lausanne': # drop brainstem but retain subcortex.
+            a = a[parcel_loc != 2,:]
+            a = a[:,parcel_loc != 2]
         A[:,:,i] = a
     elif len(full_path) == 0:
         print(file_name + ': NOT FOUND')
@@ -137,13 +167,13 @@ for (i, (index, row)) in enumerate(df.iterrows()):
         A[:,:,i] = np.full((num_parcels, num_parcels), np.nan)
 
 
-# In[13]:
+# In[16]:
 
 
 np.sum(subj_filt)
 
 
-# In[14]:
+# In[17]:
 
 
 if any(subj_filt):
@@ -155,14 +185,14 @@ print(df_node.shape)
 
 # ### Check if any subjects have disconnected nodes in A matrix
 
-# In[15]:
+# In[18]:
 
 
 # subject filter
 subj_filt = np.zeros((df.shape[0],)).astype(bool)
 
 
-# In[16]:
+# In[19]:
 
 
 for i in range(A.shape[2]):
@@ -170,13 +200,13 @@ for i in range(A.shape[2]):
         subj_filt[i] = True
 
 
-# In[17]:
+# In[20]:
 
 
 np.sum(subj_filt)
 
 
-# In[18]:
+# In[21]:
 
 
 if any(subj_filt):
@@ -186,13 +216,13 @@ if any(subj_filt):
 print(df_node.shape)
 
 
-# In[19]:
+# In[22]:
 
 
 np.sum(df['averageManualRating'] == 2)
 
 
-# In[20]:
+# In[23]:
 
 
 np.sum(df['dti64QAManualScore'] == 2)
@@ -200,7 +230,7 @@ np.sum(df['dti64QAManualScore'] == 2)
 
 # ### Get streamline count and network density
 
-# In[21]:
+# In[24]:
 
 
 A_c = np.zeros((A.shape[2],))
@@ -214,31 +244,42 @@ df.loc[:,'network_density'] = A_d
 
 # ### Compute node metrics
 
-# In[22]:
+# In[25]:
 
 
 # fc stored as 3d matrix, subjects of 3rd dim
 S = np.zeros((df.shape[0], num_parcels))
 AC = np.zeros((df.shape[0], num_parcels))
+BC = np.zeros((df.shape[0], num_parcels))
+CC = np.zeros((df.shape[0], num_parcels))
+SGC = np.zeros((df.shape[0], num_parcels))
 
-for (i, (index, row)) in enumerate(df.iterrows()):
+# for (i, (index, row)) in enumerate(df.iterrows()):
+for i in tqdm(np.arange(df.shape[0])):
     S[i,:] = node_strength(A[:,:,i])
     AC[i,:] = ave_control(A[:,:,i])
-
+    G = from_numpy_matrix(A[:,:,i])
+    BC[i,:] = np.array(list(betweenness_centrality(G, normalized=False).values()))
+    CC[i,:] = np.array(list(closeness_centrality(G).values()))
+    SGC[i,:] = np.array(list(subgraph_centrality(G).values()))
+    
 df_node.loc[:,str_labels] = S
 df_node.loc[:,ac_labels] = AC
+df_node.loc[:,bc_labels] = BC
+df_node.loc[:,cc_labels] = CC
+df_node.loc[:,sgc_labels] = SGC
 
 
 # ## Recalculate average control at different C params
 
-# In[23]:
+# In[26]:
 
 
 c_params = np.array([10, 100, 1000, 10000])
 c_params
 
 
-# In[24]:
+# In[27]:
 
 
 # output dataframe
@@ -251,28 +292,55 @@ for c in c_params:
     
     # fc stored as 3d matrix, subjects of 3rd dim
     AC = np.zeros((df.shape[0], num_parcels))
-    for (i, (index, row)) in enumerate(df.iterrows()):
+    for i in tqdm(np.arange(df.shape[0])):
         AC[i,:] = ave_control(A[:,:,i], c = c)
 
     df_node_ac_temp.loc[:,ac_labels_new] = AC
     df_node_ac_overc = pd.concat((df_node_ac_overc, df_node_ac_temp), axis = 1)
 
 
+# ## Scale average controllability to test for differences in initial conditions
+
+# In[28]:
+
+
+df_node_ac_i2 = df_node.loc[:,ac_labels] * (2**2)
+df_node_ac_i2.head()
+
+
+# In[29]:
+
+
+df_node_ac_overc_i2 = df_node_ac_overc * (2**2)
+df_node_ac_overc_i2.head()
+
+
 # # Save out raw data
 
-# In[25]:
+# In[30]:
+
+
+df_node.head()
+
+
+# In[31]:
 
 
 print(df_node.isna().any().any())
 print(df_node_ac_overc.isna().any().any())
+print(df_node_ac_i2.isna().any().any())
 
 
-# In[26]:
+# In[32]:
 
 
 np.save(os.path.join(storedir, outfile_prefix+'A'), A)
+
 df_node.to_csv(os.path.join(storedir, outfile_prefix+'df_node.csv'))
 df_node_ac_overc.to_csv(os.path.join(storedir, outfile_prefix+'df_node_ac_overc.csv'))
+df_node_ac_i2.to_csv(os.path.join(storedir, outfile_prefix+'df_node_ac_i2.csv'))
+df_node_ac_overc_i2.to_csv(os.path.join(storedir, outfile_prefix+'df_node_ac_overc_i2.csv'))
+
 df.to_csv(os.path.join(storedir, outfile_prefix+'df.csv'))
 
 
@@ -282,13 +350,13 @@ df.to_csv(os.path.join(storedir, outfile_prefix+'df.csv'))
 
 # ### Covariates
 
-# In[27]:
+# In[33]:
 
 
 covs = ['ageAtScan1', 'mprage_antsCT_vol_TBV', 'dti64MeanRelRMS', 'network_density', 'streamline_count']
 
 
-# In[28]:
+# In[34]:
 
 
 rank_r = np.zeros(len(covs),)
@@ -303,12 +371,13 @@ print(np.sum(rank_r < 0.99))
 
 # ### Node features
 
-# In[29]:
+# In[35]:
 
 
 rank_r = np.zeros(df_node.shape[1],)
 
-for i, col in enumerate(df_node.columns):
+for i in tqdm(np.arange(df_node.shape[1])):
+    col = df_node.iloc[:,i].name
     x = rank_int(df_node.loc[:,col])
     rank_r[i] = sp.stats.spearmanr(df_node.loc[:,col],x)[0]
     df_node.loc[:,col] = x
@@ -316,12 +385,27 @@ for i, col in enumerate(df_node.columns):
 print(np.sum(rank_r < .99))
 
 
-# In[30]:
+# In[36]:
+
+
+rank_r = np.zeros(df_node_ac_i2.shape[1],)
+
+for i in tqdm(np.arange(df_node_ac_i2.shape[1])):
+    col = df_node_ac_i2.iloc[:,i].name
+    x = rank_int(df_node_ac_i2.loc[:,col])
+    rank_r[i] = sp.stats.spearmanr(df_node_ac_i2.loc[:,col],x)[0]
+    df_node_ac_i2.loc[:,col] = x
+
+print(np.sum(rank_r < .99))
+
+
+# In[37]:
 
 
 rank_r = np.zeros(df_node_ac_overc.shape[1],)
 
-for i, col in enumerate(df_node_ac_overc.columns):
+for i in tqdm(np.arange(df_node_ac_overc.shape[1])):
+    col = df_node_ac_overc.iloc[:,i].name
     x = rank_int(df_node_ac_overc.loc[:,col])
     rank_r[i] = sp.stats.spearmanr(df_node_ac_overc.loc[:,col],x)[0]
     df_node_ac_overc.loc[:,col] = x
@@ -329,9 +413,23 @@ for i, col in enumerate(df_node_ac_overc.columns):
 print(np.sum(rank_r < .99))
 
 
+# In[38]:
+
+
+rank_r = np.zeros(df_node_ac_overc_i2.shape[1],)
+
+for i in tqdm(np.arange(df_node_ac_overc_i2.shape[1])):
+    col = df_node_ac_overc_i2.iloc[:,i].name
+    x = rank_int(df_node_ac_overc_i2.loc[:,col])
+    rank_r[i] = sp.stats.spearmanr(df_node_ac_overc_i2.loc[:,col],x)[0]
+    df_node_ac_overc_i2.loc[:,col] = x
+
+print(np.sum(rank_r < .99))
+
+
 # ### Psychosis
 
-# In[31]:
+# In[39]:
 
 
 covs = ['ageAtScan1', 'sex', 'mprage_antsCT_vol_TBV', 'dti64MeanRelRMS']
@@ -340,6 +438,9 @@ print(phenos)
 
 df_node.to_csv(os.path.join(outputdir, outfile_prefix+'X.csv'))
 df_node_ac_overc.to_csv(os.path.join(outputdir, outfile_prefix+'X_ac_c.csv'))
+df_node_ac_i2.to_csv(os.path.join(outputdir, outfile_prefix+'X_ac_i2.csv'))
+df_node_ac_overc_i2.to_csv(os.path.join(outputdir, outfile_prefix+'X_ac_c_i2.csv'))
+
 df.loc[:,phenos].to_csv(os.path.join(outputdir, outfile_prefix+'y.csv'))
 df.loc[:,covs].to_csv(os.path.join(outputdir, outfile_prefix+'c.csv'))
 
