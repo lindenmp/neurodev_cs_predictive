@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import nibabel as nib
 import scipy.io as sio
+from tqdm import tqdm
 
 # Stats
 import scipy as sp
@@ -33,22 +34,31 @@ from func import set_proj_env, my_get_cmap, rank_int
 # In[3]:
 
 
-parc_str = 'schaefer'
-parc_scale = 200
+parc_str = 'schaefer' # 'schaefer' 'lausanne' 'glasser'
+parc_scale = 200 # 200/400 | 125/250 | 360
 edge_weight = 'streamlineCount'
 parcel_names, parcel_loc, drop_parcels, num_parcels = set_proj_env(parc_str = parc_str, parc_scale = parc_scale, edge_weight = edge_weight)
 
 
+# In[4]:
+
+
+if parc_str == 'schaefer' or parc_str == 'glasser':
+    exclude_str = 't1Exclude'
+else:
+    exclude_str = 'fsFinalExclude'
+
+
 # ### Setup directory variables
 
-# In[4]:
+# In[5]:
 
 
 print(os.environ['PIPELINEDIR'])
 if not os.path.exists(os.environ['PIPELINEDIR']): os.makedirs(os.environ['PIPELINEDIR'])
 
 
-# In[5]:
+# In[6]:
 
 
 outputdir = os.path.join(os.environ['PIPELINEDIR'], '0_get_sample', 'out')
@@ -56,7 +66,7 @@ print(outputdir)
 if not os.path.exists(outputdir): os.makedirs(outputdir)
 
 
-# In[6]:
+# In[7]:
 
 
 figdir = os.path.join(os.environ['OUTPUTDIR'], 'figs')
@@ -66,7 +76,7 @@ if not os.path.exists(figdir): os.makedirs(figdir)
 
 # # Load in demographic and symptom data
 
-# In[7]:
+# In[8]:
 
 
 # LTN and Health Status
@@ -107,7 +117,7 @@ df.set_index(['bblid', 'scanid'], inplace = True)
 
 # # Filter subjects
 
-# In[8]:
+# In[9]:
 
 
 # 1) Primary sample filter
@@ -115,7 +125,7 @@ df = df[df['healthExcludev2'] == 0]
 print('N after initial exclusion:', df.shape[0])
 
 # 2) T1 exclusion
-df = df[df['t1Exclude'] == 0]
+df = df[df[exclude_str] == 0]
 print('N after T1 exclusion:', df.shape[0])
 
 # 3) Diffusion exclusion
@@ -125,32 +135,32 @@ df = df[df['dti64Exclude'] == 0]
 print('N after Diffusion exclusion:', df.shape[0])
 
 
-# In[9]:
+# In[10]:
 
 
 df['dti64QAManualScore'].unique()
 
 
-# In[10]:
+# In[11]:
 
 
 np.sum(df['averageManualRating'] == 2)
 
 
-# In[11]:
+# In[12]:
 
 
 np.sum(df['dti64QAManualScore'] == 2)
 
 
-# In[12]:
+# In[13]:
 
 
 # Convert age to years
 df['ageAtScan1_Years'] = np.round(df.ageAtScan1/12, decimals=1)
 
 
-# In[13]:
+# In[14]:
 
 
 # find unique ages
@@ -160,14 +170,14 @@ print('There are', age_unique.shape[0], 'unique age points')
 
 # ## Symptom dimensions
 
-# In[14]:
+# In[15]:
 
 
 phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg']
 print(phenos)
 
 
-# In[15]:
+# In[16]:
 
 
 for pheno in phenos:
@@ -177,7 +187,7 @@ for pheno in phenos:
         df.loc[df.loc[:,pheno].isna(),pheno] = x
 
 
-# In[16]:
+# In[17]:
 
 
 # Normalize
@@ -195,7 +205,7 @@ for i, pheno in enumerate(phenos):
 print(np.sum(rank_r < 1))
 
 
-# In[17]:
+# In[18]:
 
 
 df.loc[:,phenos].var()
@@ -203,7 +213,7 @@ df.loc[:,phenos].var()
 
 # ## Export
 
-# In[18]:
+# In[19]:
 
 
 header = ['squeakycleanExclude','ageAtScan1', 'ageAtScan1_Years','sex','race2','handednessv2', 'averageManualRating', 'dti64QAManualScore', 'restProtocolValidationStatus', 'restExclude',
@@ -214,12 +224,12 @@ header = ['squeakycleanExclude','ageAtScan1', 'ageAtScan1_Years','sex','race2','
           'goassessSmryPrimePos2', 'goassessSmryPsychOverallRtg',
           'goassessDxpmr4',
           'Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg']
-df.to_csv(os.path.join(outputdir, 'df.csv'), columns = header)
+df.to_csv(os.path.join(outputdir, exclude_str+'_df.csv'), columns = header)
 
 
 # # Plots
 
-# In[19]:
+# In[20]:
 
 
 if not os.path.exists(figdir): os.makedirs(figdir)
@@ -233,7 +243,7 @@ phenos_label = ['Overall Psychopathology','Psychosis (Positive)','Psychosis (Neg
 
 # ## Age
 
-# In[20]:
+# In[21]:
 
 
 f, axes = plt.subplots(1,2)
@@ -265,7 +275,7 @@ f.savefig('age_distributions.png', dpi = 300, bbox_inches = 'tight', pad_inches 
 
 # ## Symptom dimensions
 
-# In[21]:
+# In[22]:
 
 
 df_rc = pd.melt(df, value_vars = phenos)
@@ -283,7 +293,7 @@ f.savefig('symptoms_distributions.png', dpi = 300, bbox_inches = 'tight', pad_in
 
 # ### Export sample for FC gradients
 
-# In[22]:
+# In[23]:
 
 
 # 4) rs-fMRI exclusion
@@ -292,8 +302,8 @@ df = df[df['restExclude'] == 0]
 print('N after rs-fMRI exclusion:', df.shape[0])
 
 
-# In[23]:
+# In[24]:
 
 
-df.to_csv(os.path.join(outputdir, 'df_gradients.csv'), columns = header)
+df.to_csv(os.path.join(outputdir, exclude_str+'_df_gradients.csv'), columns = header)
 
