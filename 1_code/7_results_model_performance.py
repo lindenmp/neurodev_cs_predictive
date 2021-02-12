@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import nibabel as nib
 import scipy.io as sio
+from tqdm import tqdm
 
 # Stats
 import scipy as sp
@@ -39,9 +40,9 @@ from func import set_proj_env, my_get_cmap, get_fdr_p, assemble_df, get_exact_p,
 # In[4]:
 
 
-parc_str = 'schaefer'
-parc_scale = 200
-edge_weight = 'streamlineCount'
+parc_str = 'schaefer' # 'schaefer' 'lausanne' 'glasser'
+parc_scale = 200 # 200/400 | 125/250 | 360
+edge_weight = 'streamlineCount' # 'streamlineCount' 'volNormStreamline'
 parcel_names, parcel_loc, drop_parcels, num_parcels = set_proj_env(parc_str = parc_str, parc_scale = parc_scale, edge_weight = edge_weight)
 
 
@@ -49,7 +50,13 @@ parcel_names, parcel_loc, drop_parcels, num_parcels = set_proj_env(parc_str = pa
 
 
 # output file prefix
-outfile_prefix = parc_str+'_'+str(parc_scale)+'_'+edge_weight+'_'
+run_hemi = ''
+if run_hemi == 'ipsi':
+    outfile_prefix = parc_str+'_'+str(parc_scale)+'_'+edge_weight+'_ipsi_'
+elif run_hemi == 'contra':
+    outfile_prefix = parc_str+'_'+str(parc_scale)+'_'+edge_weight+'_contra_'
+else:
+    outfile_prefix = parc_str+'_'+str(parc_scale)+'_'+edge_weight+'_'
 outfile_prefix
 
 
@@ -73,14 +80,14 @@ if not os.path.exists(figdir): os.makedirs(figdir)
 # In[8]:
 
 
-phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg']
-phenos_label = ['Overall Psychopathology','Psychosis (Positive)','Psychosis (Negative)']
-phenos_short = ['Ov. Psy.','Psy. (pos)','Psy. (neg)']
+phenos = ['Psychosis_Positive','Psychosis_NegativeDisorg','Overall_Psychopathology']
+phenos_label = ['Psychosis (positive)','Psychosis (negative)','Overall psychopathology']
+phenos_short = ['Psy. (pos)','Psy. (neg)','Ov. psy.']
 
 print(phenos)
 
-metrics = ['str', 'ac']
-metrics_label = ['Strength', 'Average Controllability']
+metrics = ['str', 'ac', 'bc', 'cc', 'sgc']
+metrics_label = ['Strength', 'Average controllability', 'Betweenness centrality', 'Closeness centrality', 'Subgraph centrality']
 
 algs = ['rr', 'krr_rbf']
 scores = ['corr', 'rmse']
@@ -104,6 +111,7 @@ num_scores = len(scores)
 if not os.path.exists(figdir): os.makedirs(figdir)
 os.chdir(figdir)
 sns.set(style='white', context = 'paper', font_scale = 1)
+sns.set_style({'font.family':'sans-serif', 'font.sans-serif':['Public Sans']})
 cmap = my_get_cmap('pair')
 
 
@@ -118,6 +126,8 @@ df_node.set_index(['bblid', 'scanid'], inplace = True)
 df_pheno = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'out', outfile_prefix+'y.csv'))
 df_pheno.set_index(['bblid', 'scanid'], inplace = True)
 
+num_subjects = df_pheno.shape[0]
+
 
 # In[12]:
 
@@ -128,7 +138,7 @@ score = scores[1]; print(score)
 # In[13]:
 
 
-predictiondir = os.path.join(os.environ['PIPELINEDIR'], '3_prediction', 'out', outfile_prefix)
+predictiondir = os.path.join(os.environ['PIPELINEDIR'], '3_prediction_rnr', 'out', outfile_prefix)
 predictiondir
 
 
@@ -137,20 +147,32 @@ predictiondir
 # In[14]:
 
 
-indir = predictiondir + 'predict_symptoms_rcv_nuis'
+extra_str = ''
+# extra_str = '_agesplit'
+extra_str1 = ''
+# extra_str1 = '_agelow'
+# extra_str1 = '_agehigh'
+
+
+# In[15]:
+
+
+indir = predictiondir + 'predict_symptoms_rcv_nuis'+extra_str
 print(indir)
 
 accuracy_mean_nuis = np.zeros((100, len(algs), len(metrics), len(phenos)))
 accuracy_std_nuis = np.zeros((100, len(algs), len(metrics), len(phenos)))
-y_pred_var = np.zeros((100, len(algs), len(metrics), len(phenos)))
 
 for a, alg in enumerate(algs):
     for m, metric in enumerate(metrics):
+#         if metric == 'ac':
+#             indir = predictiondir + 'predict_symptoms_rcv_nuis_ac_i2'
+#         else:
+#             indir = predictiondir + 'predict_symptoms_rcv_nuis'
+            
         for p, pheno in enumerate(phenos):
-            accuracy_mean_nuis[:,a,m,p] = np.loadtxt(os.path.join(indir, alg + '_' + score + '_' + metric + '_' + pheno, 'accuracy_mean.txt'))
-            accuracy_std_nuis[:,a,m,p] = np.loadtxt(os.path.join(indir, alg + '_' + score + '_' + metric + '_' + pheno, 'accuracy_std.txt'))
-            y_pred_out_repeats = np.loadtxt(os.path.join(indir, alg + '_' + score + '_' + metric + '_' + pheno, 'y_pred_out_repeats.txt'))
-            y_pred_var[:,a,m,p] = y_pred_out_repeats.var(axis = 0)
+            accuracy_mean_nuis[:,a,m,p] = np.loadtxt(os.path.join(indir, alg + '_' + score + '_' + metric + '_' + pheno, 'accuracy_mean'+extra_str1+'.txt'))
+            accuracy_std_nuis[:,a,m,p] = np.loadtxt(os.path.join(indir, alg + '_' + score + '_' + metric + '_' + pheno, 'accuracy_std'+extra_str1+'.txt'))
 
 if score == 'rmse' or score == 'mae':
     accuracy_mean_nuis = np.abs(accuracy_mean_nuis)
@@ -161,10 +183,10 @@ print(accuracy_mean_nuis.shape)
 
 # ### Load stratified cross-val (with nuis)
 
-# In[15]:
+# In[16]:
 
 
-indir = predictiondir + 'predict_symptoms_scv_nuis'
+indir = predictiondir + 'predict_symptoms_scv_nuis'+extra_str
 print(indir)
 
 scv_accuracy_mean_nuis = np.zeros((len(algs), len(metrics), len(phenos)))
@@ -173,8 +195,8 @@ scv_accuracy_std_nuis = np.zeros((len(algs), len(metrics), len(phenos)))
 for a, alg in enumerate(algs):
     for m, metric in enumerate(metrics):
         for p, pheno in enumerate(phenos):
-            scv_accuracy_mean_nuis[a,m,p] = np.loadtxt(os.path.join(indir, alg + '_' + score + '_' + metric + '_' + pheno, 'accuracy_mean_nuis.txt'))
-            scv_accuracy_std_nuis[a,m,p] = np.loadtxt(os.path.join(indir, alg + '_' + score + '_' + metric + '_' + pheno, 'accuracy_std_nuis.txt'))
+            scv_accuracy_mean_nuis[a,m,p] = np.loadtxt(os.path.join(indir, alg + '_' + score + '_' + metric + '_' + pheno, 'accuracy_mean_nuis'+extra_str1+'.txt'))
+            scv_accuracy_std_nuis[a,m,p] = np.loadtxt(os.path.join(indir, alg + '_' + score + '_' + metric + '_' + pheno, 'accuracy_std_nuis'+extra_str1+'.txt'))
 
 if score == 'rmse' or score == 'mae':
     scv_accuracy_mean_nuis = np.abs(scv_accuracy_mean_nuis)
@@ -185,41 +207,39 @@ print(scv_accuracy_mean_nuis.shape)
 
 # # Plot results
 
-# ### Figure S4
-
-# In[16]:
-
-
-for metric in metrics:
-    f, ax = plt.subplots()
-    f.set_figwidth(3)
-    f.set_figheight(2)
-
-    df = assemble_df(accuracy_mean_nuis, algs, metrics, phenos)
-    df = df.loc[df.loc[:,'metric'] == metric,:]
-    df.loc[df.loc[:,'alg'] == 'rr','alg'] = 'Ridge'
-    df.loc[df.loc[:,'alg'] == 'krr_rbf','alg'] = 'Kernel Ridge'
-
-    sns.violinplot(x = 'pheno', y = 'score', hue = 'alg', data = df, ax = ax, inner = 'quartile', split = False, linewidth = 0.5, palette = 'Pastel1')
-    ax.tick_params(pad = -2)
-
-    if metric == 'str': ax.set_title('Strength')
-    elif metric == 'ac': ax.set_title('Average Controllability')
-
-    ax.legend(loc='lower center', bbox_to_anchor=(0.5, 1.1), ncol=3)
-    ax.set_xticklabels(phenos_short)
-    ax.set_xlabel('Symptom Dimensions')
-    if score == 'rmse': ax.set_ylabel('RMSE (lower = better)')
-    elif score == 'corr': ax.set_ylabel('corr(y_true,y_pred)')
-
-    if score == 'rmse' and parc_scale == 200: ax.set_ylim([0.975,1.175])
-    elif score == 'rmse' and parc_scale == 400: ax.set_ylim([0.95,1.45])
-    ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
-
-    f.savefig(outfile_prefix+'model_selection_'+metric+'.svg', dpi = 300, bbox_inches = 'tight')
-
+# ### Figure S5
 
 # In[17]:
+
+
+if score == 'rmse':
+    for m, metric in enumerate(metrics):
+        f, ax = plt.subplots()
+        f.set_figwidth(3)
+        f.set_figheight(2)
+
+        df = assemble_df(accuracy_mean_nuis, algs, metrics, phenos)
+        df = df.loc[df.loc[:,'metric'] == metric,:]
+        df.loc[df.loc[:,'alg'] == 'rr','alg'] = 'Ridge'
+        df.loc[df.loc[:,'alg'] == 'krr_rbf','alg'] = 'Kernel ridge'
+
+        sns.violinplot(x = 'pheno', y = 'score', hue = 'alg', data = df, ax = ax, inner = 'quartile', split = False, linewidth = 0.5, palette = 'Pastel1')
+        ax.tick_params(pad = -2)
+        ax.set_title(metrics_label[m])
+        ax.legend(loc='lower center', bbox_to_anchor=(0.5, 1.1), ncol=3)
+        ax.set_xticklabels(phenos_short)
+        ax.set_xlabel('Symptom dimensions')
+        if score == 'rmse': ax.set_ylabel('RMSE (lower = better)')
+        elif score == 'corr': ax.set_ylabel('corr(y_true,y_pred)')
+
+        if score == 'rmse' and parc_scale == 200: ax.set_ylim([0.975,1.175])
+        elif score == 'rmse' and parc_scale == 400: ax.set_ylim([0.95,1.45])
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
+
+        f.savefig(outfile_prefix+'model_selection_'+metric+'.svg', dpi = 300, bbox_inches = 'tight')
+
+
+# In[18]:
 
 
 a = 1; alg = algs[a]; print(alg)
@@ -227,46 +247,71 @@ a = 1; alg = algs[a]; print(alg)
 
 # ### Figure 2
 
-# In[18]:
-
-
-df = assemble_df(accuracy_mean_nuis, algs, metrics, phenos)
-df = df.loc[df.loc[:,'alg'] == alg,:]
-df = df.loc[df.loc[:,'pheno'] == pheno,:]
-
-
 # In[19]:
 
 
-stats = pd.DataFrame(index = phenos, columns = ['test_stat', 'pval'])
-for pheno in phenos:
-    df = assemble_df(accuracy_mean_nuis, algs, metrics, phenos)
-    df = df.loc[df.loc[:,'alg'] == alg,:]
-    df = df.loc[df.loc[:,'pheno'] == pheno,:]
-    
-    x = df.loc[df.loc[:,'metric'] == 'str','score']
-    y = df.loc[df.loc[:,'metric'] == 'ac','score']
-#     my_ttest = sp.stats.ttest_rel(x, y)
-#     stats.loc[pheno,'test_stat'] = my_ttest[0]
-#     stats.loc[pheno,'pval'] = my_ttest[1]
-    stats.loc[pheno,'test_stat'] = np.mean(x)-np.mean(y)
-    stats.loc[pheno,'pval'] = get_exact_p(x, y)
-    
-stats.loc[:,'pval_corr'] = get_fdr_p(stats.loc[:,'pval'])
-stats.loc[:,'sig'] = stats.loc[:,'pval_corr'] < 0.05
+metric_pairs = ['str_ac', 'str_bc', 'str_cc', 'str_sgc',
+                'ac_bc', 'ac_cc', 'ac_sgc',
+                'bc_cc', 'bc_sgc',
+                'cc_sgc']
 
+stats_metric_pairs = pd.DataFrame(index = phenos)
+for pheno in phenos:
+    for metric in metric_pairs:
+        metric_x = metric.split('_')[0]
+        metric_y = metric.split('_')[1]
+        
+        df = assemble_df(accuracy_mean_nuis, algs, metrics, phenos)
+        df = df.loc[df.loc[:,'alg'] == alg,:]
+        df = df.loc[df.loc[:,'pheno'] == pheno,:]
+
+        x = df.loc[df.loc[:,'metric'] == metric_x,'score']
+        y = df.loc[df.loc[:,'metric'] == metric_y,'score']
+        stats_metric_pairs.loc[pheno,metric_x+'_'+metric_y] = get_exact_p(x, y)
+    
+stats_metric_pairs = get_fdr_p_df(stats_metric_pairs)
+
+stats_metric_pairs[stats_metric_pairs<.05]
+
+
+# #### Permutation
 
 # In[20]:
 
 
-stats
+indir = predictiondir + 'predict_symptoms_scv_nuis'+extra_str
+
+stats_permutation = pd.DataFrame(index = phenos, columns = metrics)
+
+for p, pheno in enumerate(phenos):
+    for m, metric in enumerate(metrics):
+        accuracy_mean = np.loadtxt(os.path.join(indir, alg + '_' + score + '_' + metric + '_' + pheno, 'accuracy_mean_nuis'+extra_str1+'.txt'))
+        permuted_acc = np.loadtxt(os.path.join(indir, alg + '_' + score + '_' + metric + '_' + pheno, 'permuted_acc_nuis'+extra_str1+'.txt'))
+        
+        stats_permutation.loc[pheno,metric] = np.sum(permuted_acc >= accuracy_mean) / len(permuted_acc)
+
+# multiple comparisons
+if parc_str == 'schaefer' and parc_scale == 200:
+    stats_permutation = get_fdr_p_df(stats_permutation, rows = False)
+
+stats_permutation[stats_permutation < 0.05]
 
 
 # In[21]:
 
 
+m=1; print(metrics[m])
+p=0; print(phenos[p])
+
+print(np.round(scv_accuracy_mean_nuis[a,m,p],2))
+print(np.round(stats_permutation.loc[phenos[p],metrics[m]],2))
+
+
+# In[22]:
+
+
 f, ax = plt.subplots(1, len(phenos))
-f.set_figwidth(6.5)
+f.set_figwidth(7)
 f.set_figheight(2.5)
 
 for i, pheno in enumerate(phenos): 
@@ -276,113 +321,100 @@ for i, pheno in enumerate(phenos):
     df = df.loc[df.loc[:,'alg'] == alg,:]
     df = df.loc[df.loc[:,'pheno'] == pheno,:]
 
-    sns.violinplot(x = 'metric', y = 'score', data = df, ax = ax[i], inner = 'quartile', split = False, palette = cmap, linewidth = 1)
-    ax[i].tick_params(pad = -2)
+    sns.violinplot(x = 'metric', y = 'score', data = df, ax = ax[i], inner = 'quartile', split = False, palette = 'Pastel2', linewidth = 1)
+    ax[i].tick_params(pad = -.5)
 
-    ax[i].set_title(pheno_label)
-    if score == 'rmse': ax[i].set_ylabel('RMSE (lower = better)')
-    elif score == 'corr': ax[i].set_ylabel('corr(y_true,y_pred)')
+    if score == 'rmse':
+        ax[i].set_title(pheno_label)
 
-    ax[i].set_xlabel('Connectivity Feature')
+    if i == 0:
+        if score == 'rmse':
+            ax[i].set_ylabel('RMSE (lower = better)')
+            ax[i].set_ylim([ax[i].get_ylim()[0]-ax[i].get_ylim()[0]*.002,
+                            ax[i].get_ylim()[1]+ax[i].get_ylim()[1]*.002])
+        elif score == 'corr':
+            ax[i].set_ylabel('Correlation (higher = better)')
+    else:
+            ax[i].set_ylabel('')
+
+    ax[i].set_xlabel('Connectivity feature')
     ax[i].yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
 
     for tick in ax[i].xaxis.get_majorticklabels():
         tick.set_y(.025)
 
-    if stats.loc[pheno,'sig']:
-        y_pos = ax[i].get_ylim()[0]
-        ax[i].axhline(y = y_pos-(y_pos*.0005), xmin = 0.25, xmax = 0.75, color = 'black')
-        ax[i].text(x = 0.5, y = y_pos-(y_pos*.0005), s =  '$p$ < 0.05', horizontalalignment='center', verticalalignment='bottom', color = 'black', fontsize = 8)
+    for metric_pair in metric_pairs:
+        metric_x = metric_pair.split('_')[0]
+        metric_x_loc = metrics.index(metric_x)
+        metric_y = metric_pair.split('_')[1]
+        metric_y_loc = metrics.index(metric_y)
+        
+        if stats_metric_pairs.loc[pheno,metric_pair] < 0.05:
+            y_pos = df.loc[np.logical_or(df.loc[:,'metric'] == metric_x,df.loc[:,'metric'] == metric_y),'score'].max()
+            ax[i].hlines(y = y_pos, xmin = ax[i].get_xticks()[metric_x_loc], xmax = ax[i].get_xticks()[metric_y_loc], color = 'black', linewidth = 0.5)
+            ax[i].text(x = np.mean([ax[i].get_xticks()[metric_y_loc],ax[i].get_xticks()[metric_x_loc]]), y = y_pos, s =  '*', horizontalalignment='center', verticalalignment='top', color = 'black', fontsize = 8)
 
     # add stratified cv score
-    ax[i].scatter(x = np.arange(len(metrics)), y = scv_accuracy_mean_nuis[a,:,i], marker = 'o', s = 50, edgecolors = 'black', facecolors = 'gray', alpha=0.8, linewidth = 1.5)
+    for m, metric in enumerate(metrics):
+        if stats_permutation.loc[pheno,metric] < 0.05:
+            ax[i].scatter(x = m, y = scv_accuracy_mean_nuis[a,m,i], marker = 'o', s = 30, edgecolors = 'black', facecolors = 'gray', alpha = 0.75, linewidth = 1)
+        else:
+            ax[i].scatter(x = m, y = scv_accuracy_mean_nuis[a,m,i], marker = 'o', s = 30/2, edgecolors = 'black', facecolors = 'gray', alpha = 0.5, linewidth = .75)
 
 plt.subplots_adjust(wspace=0.5)
         
-f.savefig(outfile_prefix+'performance_comparison_'+alg+'.svg', dpi = 300, bbox_inches = 'tight')
+f.savefig(outfile_prefix+'performance_comparison_'+alg+'_'+score+'.svg', dpi = 300, bbox_inches = 'tight')
 
 
-# #### Permutation
-
-# In[22]:
-
-
-indir = predictiondir + 'predict_symptoms_scv_nuis'
-
-z_vals = pd.DataFrame(index = metrics, columns = phenos)
-p_vals = pd.DataFrame(index = metrics, columns = phenos)
-
-for m, metric in enumerate(metrics):
-    for p, pheno in enumerate(phenos):
-        accuracy_mean = np.loadtxt(os.path.join(indir, alg + '_' + score + '_' + metric + '_' + pheno, 'accuracy_mean_nuis.txt'))
-        permuted_acc = np.loadtxt(os.path.join(indir, alg + '_' + score + '_' + metric + '_' + pheno, 'permuted_acc_nuis.txt'))
-        
-        p_vals.loc[metric,pheno] = np.sum(permuted_acc >= accuracy_mean) / len(permuted_acc)
-
-# multiple comparisons
-p_vals = get_fdr_p_df(p_vals, rows = False)
-
-p_vals[p_vals < 0.05]
-
+# ### Correlate across scores
 
 # In[23]:
 
 
-p_vals
+indir = predictiondir + 'predict_symptoms_rcv_nuis'
+print(indir)
+accuracy_mean_nuis_rmse = np.zeros((100, len(metrics), len(phenos)))
 
+for m, metric in enumerate(metrics):
+    for p, pheno in enumerate(phenos):
+        accuracy_mean_nuis_rmse[:,m,p] = np.loadtxt(os.path.join(indir, alg + '_rmse_' + metric + '_' + pheno, 'accuracy_mean.txt'))
 
-# ### Correlate across scores
 
 # In[24]:
 
 
 indir = predictiondir + 'predict_symptoms_rcv_nuis'
 print(indir)
-accuracy_mean_nuis_rmse = np.zeros((100, len(algs), len(metrics), len(phenos)))
+accuracy_mean_nuis_corr = np.zeros((100, len(metrics), len(phenos)))
 
-for a, alg in enumerate(algs):
-    for m, metric in enumerate(metrics):
-        for p, pheno in enumerate(phenos):
-            accuracy_mean_nuis_rmse[:,a,m,p] = np.loadtxt(os.path.join(indir, alg + '_rmse_' + metric + '_' + pheno, 'accuracy_mean.txt'))
+for m, metric in enumerate(metrics):
+    for p, pheno in enumerate(phenos):
+        accuracy_mean_nuis_corr[:,m,p] = np.loadtxt(os.path.join(indir, alg + '_corr_' + metric + '_' + pheno, 'accuracy_mean.txt'))
 
 
 # In[25]:
 
 
-indir = predictiondir + 'predict_symptoms_rcv_nuis'
-print(indir)
-accuracy_mean_nuis_corr = np.zeros((100, len(algs), len(metrics), len(phenos)))
+rmse_corr_corr = np.zeros((len(metrics), len(phenos)))
 
-for a, alg in enumerate(algs):
-    for m, metric in enumerate(metrics):
-        for p, pheno in enumerate(phenos):
-            accuracy_mean_nuis_corr[:,a,m,p] = np.loadtxt(os.path.join(indir, alg + '_corr_' + metric + '_' + pheno, 'accuracy_mean.txt'))
+for m, metric in enumerate(metrics):
+    for p, pheno in enumerate(phenos):
+        rmse_corr_corr[m,p] = sp.stats.pearsonr(accuracy_mean_nuis_rmse[:,m,p], accuracy_mean_nuis_corr[:,m,p])[0]
 
 
 # In[26]:
 
 
-rmse_corr_corr = np.zeros((len(algs), len(metrics), len(phenos)))
-
-for a, alg in enumerate(algs):
-    for m, metric in enumerate(metrics):
-        for p, pheno in enumerate(phenos):
-            rmse_corr_corr[a,m,p] = sp.stats.pearsonr(accuracy_mean_nuis_rmse[:,a,m,p], accuracy_mean_nuis_corr[:,a,m,p])[0]
+rmse_corr_corr.mean()
 
 
 # In[27]:
 
 
-rmse_corr_corr.mean()
-
-
-# In[28]:
-
-
 rmse_corr_corr.std()
 
 
-# In[29]:
+# In[28]:
 
 
 sns.distplot(rmse_corr_corr)
@@ -390,7 +422,7 @@ sns.distplot(rmse_corr_corr)
 
 # ### Load random splits nested cross-val (without nuis)
 
-# In[30]:
+# In[29]:
 
 
 nested_score_mean = np.load(os.path.join(predictiondir+'predict_symptoms_ncv', 'nested_score_mean.npy'))
@@ -405,69 +437,68 @@ elif score == 'rmse':
 print(nested_score_mean.shape)
 
 
-# ### Figure S5
+# ### Figure S6
+
+# In[30]:
+
+
+if score == 'rmse':
+    for m, metric in enumerate(metrics):
+        f, ax = plt.subplots()
+        f.set_figwidth(3)
+        f.set_figheight(2)
+
+        df = assemble_df(nested_score_mean, algs, metrics, phenos)
+        df = df.loc[df.loc[:,'metric'] == metric,:]
+        df.loc[df.loc[:,'alg'] == 'rr','alg'] = 'Ridge'
+        df.loc[df.loc[:,'alg'] == 'krr_rbf','alg'] = 'Kernel Ridge'
+
+        sns.violinplot(x = 'pheno', y = 'score', hue = 'alg', data = df, ax = ax, inner = 'quartile', split = False, linewidth = 0.5, palette = 'Pastel1')
+    #     if score == 'rmse': ax.axhline(y = 1, color = 'black', linestyle = ':')
+        ax.tick_params(pad = -2)
+        ax.set_title(metrics_label[m])
+        ax.legend(loc='lower center', bbox_to_anchor=(0.5, 1.1), ncol=3)
+        ax.set_xticklabels(phenos_short)
+        ax.set_xlabel('Symptom Dimensions')
+        if score == 'rmse': ax.set_ylabel('RMSE (lower = better)')
+        elif score == 'corr': ax.set_ylabel('corr(y_true,y_pred)')
+
+        if score == 'rmse' and parc_scale == 200: ax.set_ylim([0.95,1.15])
+        elif score == 'rmse' and parc_scale == 400: ax.set_ylim([0.95,1.4])
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
+
+        f.savefig(outfile_prefix+'model_selection_2_'+metric+'.svg', dpi = 300, bbox_inches = 'tight')
+
+
+# ### Figure S8
 
 # In[31]:
 
 
-for metric in metrics:
-    f, ax = plt.subplots()
-    f.set_figwidth(3)
-    f.set_figheight(2)
+stats_metric_pairs = pd.DataFrame(index = phenos)
+for pheno in phenos:
+    for metric in metric_pairs:
+        metric_x = metric.split('_')[0]
+        metric_y = metric.split('_')[1]
+        
+        df = assemble_df(nested_score_mean, algs, metrics, phenos)
+        df = df.loc[df.loc[:,'alg'] == alg,:]
+        df = df.loc[df.loc[:,'pheno'] == pheno,:]
 
-    df = assemble_df(nested_score_mean, algs, metrics, phenos)
-    df = df.loc[df.loc[:,'metric'] == metric,:]
-    df.loc[df.loc[:,'alg'] == 'rr','alg'] = 'Ridge'
-    df.loc[df.loc[:,'alg'] == 'krr_rbf','alg'] = 'Kernel Ridge'
+        x = df.loc[df.loc[:,'metric'] == metric_x,'score']
+        y = df.loc[df.loc[:,'metric'] == metric_y,'score']
+        stats_metric_pairs.loc[pheno,metric_x+'_'+metric_y] = get_exact_p(x, y)
+    
+stats_metric_pairs = get_fdr_p_df(stats_metric_pairs)
 
-    sns.violinplot(x = 'pheno', y = 'score', hue = 'alg', data = df, ax = ax, inner = 'quartile', split = False, linewidth = 0.5, palette = 'Pastel1')
-#     if score == 'rmse': ax.axhline(y = 1, color = 'black', linestyle = ':')
-    ax.tick_params(pad = -2)
+stats_metric_pairs[stats_metric_pairs<.05]
 
-    if metric == 'str': ax.set_title('Strength')
-    elif metric == 'ac': ax.set_title('Average Controllability')
-
-    ax.legend(loc='lower center', bbox_to_anchor=(0.5, 1.1), ncol=3)
-    ax.set_xticklabels(phenos_short)
-    ax.set_xlabel('Symptom Dimensions')
-    if score == 'rmse': ax.set_ylabel('RMSE (lower = better)')
-    elif score == 'corr': ax.set_ylabel('corr(y_true,y_pred)')
-
-    if score == 'rmse' and parc_scale == 200: ax.set_ylim([0.95,1.15])
-    elif score == 'rmse' and parc_scale == 400: ax.set_ylim([0.95,1.4])
-    ax.yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
-
-    f.savefig(outfile_prefix+'model_selection_2_'+metric+'.svg', dpi = 300, bbox_inches = 'tight')
-
-
-# ### Figure S6
 
 # In[32]:
 
 
-stats = pd.DataFrame(index = phenos, columns = ['test_stat', 'pval'])
-for pheno in phenos:
-    df = assemble_df(nested_score_mean, algs, metrics, phenos)
-    df = df.loc[df.loc[:,'alg'] == alg,:]
-    df = df.loc[df.loc[:,'pheno'] == pheno,:]
-    
-    x = df.loc[df.loc[:,'metric'] == 'str','score']
-    y = df.loc[df.loc[:,'metric'] == 'ac','score']
-#     my_ttest = sp.stats.ttest_rel(x, y)
-#     stats.loc[pheno,'test_stat'] = my_ttest[0]
-#     stats.loc[pheno,'pval'] = my_ttest[1]
-    stats.loc[pheno,'test_stat'] = np.mean(x)-np.mean(y)
-    stats.loc[pheno,'pval'] = get_exact_p(x, y)
-    
-stats.loc[:,'pval_corr'] = get_fdr_p(stats.loc[:,'pval'])
-stats.loc[:,'sig'] = stats.loc[:,'pval_corr'] < 0.05
-
-
-# In[33]:
-
-
 f, ax = plt.subplots(1, len(phenos))
-f.set_figwidth(6.5)
+f.set_figwidth(7)
 f.set_figheight(2.5)
 
 for i, pheno in enumerate(phenos): 
@@ -477,66 +508,35 @@ for i, pheno in enumerate(phenos):
     df = df.loc[df.loc[:,'alg'] == alg,:]
     df = df.loc[df.loc[:,'pheno'] == pheno,:]
 
-    sns.violinplot(x = 'metric', y = 'score', data = df, ax = ax[i], inner = 'quartile', split = False, palette = cmap, linewidth = 1)
-    ax[i].tick_params(pad = -2)
+    sns.violinplot(x = 'metric', y = 'score', data = df, ax = ax[i], inner = 'quartile', split = False, palette = 'Pastel2', linewidth = 1)
+    ax[i].tick_params(pad = -.5)
 
     ax[i].set_title(pheno_label)
-    if score == 'rmse': ax[i].set_ylabel('RMSE (lower = better)')
-    elif score == 'corr': ax[i].set_ylabel('corr(y_true,y_pred)')
+    if score == 'rmse':
+        ax[i].set_ylabel('RMSE (lower = better)')
+        ax[i].set_ylim([ax[i].get_ylim()[0]-ax[i].get_ylim()[0]*.002,
+                        ax[i].get_ylim()[1]+ax[i].get_ylim()[1]*.002])
+    elif score == 'corr':
+        ax[i].set_ylabel('Correlation (higher = better)')
 
-    ax[i].set_xlabel('Connectivity Feature')
+    ax[i].set_xlabel('Connectivity feature')
     ax[i].yaxis.set_major_formatter(FormatStrFormatter('%.3f'))
 
     for tick in ax[i].xaxis.get_majorticklabels():
         tick.set_y(.025)
-
-    if stats.loc[pheno,'sig']:
-        y_pos = ax[i].get_ylim()[0]
-        ax[i].axhline(y = y_pos-(y_pos*.0005), xmin = 0.25, xmax = 0.75, color = 'black')
-        ax[i].text(x = 0.5, y = y_pos-(y_pos*.0005), s =  '$p$ < 0.05', horizontalalignment='center', verticalalignment='bottom', color = 'black', fontsize = 8)
+        
+    for metric_pair in metric_pairs:
+        metric_x = metric_pair.split('_')[0]
+        metric_x_loc = metrics.index(metric_x)
+        metric_y = metric_pair.split('_')[1]
+        metric_y_loc = metrics.index(metric_y)
+        
+        if stats_metric_pairs.loc[pheno,metric_pair] < 0.05:
+            y_pos = df.loc[np.logical_or(df.loc[:,'metric'] == metric_x,df.loc[:,'metric'] == metric_y),'score'].max()
+            ax[i].hlines(y = y_pos, xmin = ax[i].get_xticks()[metric_x_loc], xmax = ax[i].get_xticks()[metric_y_loc], color = 'black', linewidth = 0.5)
+            ax[i].text(x = np.mean([ax[i].get_xticks()[metric_y_loc],ax[i].get_xticks()[metric_x_loc]]), y = y_pos, s =  '*', horizontalalignment='center', verticalalignment='top', color = 'black', fontsize = 8)
 
 plt.subplots_adjust(wspace=0.5)
         
 f.savefig(outfile_prefix+'performance_comparison_2_'+alg+'.svg', dpi = 300, bbox_inches = 'tight')
-
-
-# ### Correlate across scores
-
-# In[34]:
-
-
-nested_score_mean = np.load(os.path.join(predictiondir+'predict_symptoms_ncv', 'nested_score_mean.npy'))
-print(nested_score_mean.shape)
-
-nested_score_mean_corr = nested_score_mean[:,:,0,:,:]
-nested_score_mean_rmse = nested_score_mean[:,:,1,:,:]
-
-
-# In[35]:
-
-
-rmse_corr_corr = np.zeros((len(algs), len(metrics), len(phenos)))
-
-for a, alg in enumerate(algs):
-    for m, metric in enumerate(metrics):
-        for p, pheno in enumerate(phenos):
-            rmse_corr_corr[a,m,p] = sp.stats.pearsonr(nested_score_mean_rmse[:,a,m,p], nested_score_mean_corr[:,a,m,p])[0]
-
-
-# In[36]:
-
-
-rmse_corr_corr.mean()
-
-
-# In[37]:
-
-
-rmse_corr_corr.std()
-
-
-# In[38]:
-
-
-sns.distplot(rmse_corr_corr)
 
