@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import nibabel as nib
 import scipy.io as sio
+from tqdm import tqdm
 
 # Stats
 import scipy as sp
@@ -33,8 +34,8 @@ from func import set_proj_env, my_get_cmap, get_fdr_p
 # In[3]:
 
 
-parc_str = 'schaefer'
-parc_scale = 200
+parc_str = 'schaefer' # 'schaefer' 'lausanne' 'glasser'
+parc_scale = 200 # 200/400 | 125 | 360
 edge_weight = 'streamlineCount'
 parcel_names, parcel_loc, drop_parcels, num_parcels = set_proj_env(parc_str = parc_str, parc_scale = parc_scale, edge_weight = edge_weight)
 
@@ -67,9 +68,12 @@ if not os.path.exists(figdir): os.makedirs(figdir)
 # In[7]:
 
 
-phenos = ['Overall_Psychopathology','Psychosis_Positive','Psychosis_NegativeDisorg']
-phenos_label = ['Overall Psychopathology','Psychosis (Positive)','Psychosis (Negative)']
-phenos_short = ['Ov. Psy.','Psy. (pos)','Psy. (neg)']
+phenos = ['Psychosis_Positive','Psychosis_NegativeDisorg','Overall_Psychopathology']
+phenos_label = ['Psychosis (positive)','Psychosis (negative)','Overall psychopathology']
+phenos_short = ['Psy. (pos)','Psy. (neg)','Ov. psy.']
+
+metrics = ['str', 'ac', 'bc', 'cc', 'sgc']
+metrics_label = ['Strength', 'Average controllability', 'Betweenness centrality', 'Closeness centrality', 'Subgraph centrality']
 
 
 # ## Setup plots
@@ -79,7 +83,8 @@ phenos_short = ['Ov. Psy.','Psy. (pos)','Psy. (neg)']
 
 if not os.path.exists(figdir): os.makedirs(figdir)
 os.chdir(figdir)
-sns.set(style='white', context = 'talk', font_scale = 0.8)
+sns.set(style='white', context = 'paper', font_scale = 1)
+sns.set_style({'font.family':'sans-serif', 'font.sans-serif':['Public Sans']})
 cmap = my_get_cmap('pair')
 
 
@@ -91,34 +96,61 @@ cmap = my_get_cmap('pair')
 df = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'store', outfile_prefix+'df.csv'))
 df.set_index(['bblid', 'scanid'], inplace = True)
 
+df_node = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'store', outfile_prefix+'df_node.csv'))
+df_node.set_index(['bblid', 'scanid'], inplace = True)
+
+df_node_ac_i2 = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'store', outfile_prefix+'df_node_ac_i2.csv'))
+df_node_ac_i2.set_index(['bblid', 'scanid'], inplace = True)
+
+df_node_ac_overc = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'store', outfile_prefix+'df_node_ac_overc.csv'))
+df_node_ac_overc.set_index(['bblid', 'scanid'], inplace = True)
+
+df_node_ac_overc_i2 = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'store', outfile_prefix+'df_node_ac_overc_i2.csv'))
+df_node_ac_overc_i2.set_index(['bblid', 'scanid'], inplace = True)
+
+c = pd.read_csv(os.path.join(os.environ['PIPELINEDIR'], '1_compute_node_features', 'out', outfile_prefix+'c.csv'))
+c.set_index(['bblid', 'scanid'], inplace = True); print(c.shape)
+
 
 # In[10]:
+
+
+print(np.sum(df_node.filter(regex = 'ac').corrwith(df_node_ac_i2, method='spearman') < 0.9999))
+print(np.sum(df_node_ac_overc.corrwith(df_node_ac_overc_i2, method='spearman') < 0.9999))
+print(np.sum(df_node.filter(regex = 'ac').corrwith(df_node_ac_i2, method='pearson') < 0.9999))
+print(np.sum(df_node_ac_overc.corrwith(df_node_ac_overc_i2, method='pearson') < 0.9999))
+
+
+# In[11]:
 
 
 df['sex'].unique()
 
 
-# In[11]:
+# In[12]:
 
 
 print(np.sum(df.loc[:,'sex'] == 1))
 print((np.sum(df.loc[:,'sex'] == 1)/df.shape[0]) * 100)
 
 
-# In[12]:
+# In[13]:
 
 
 print(np.sum(df.loc[:,'sex'] == 2))
 print((np.sum(df.loc[:,'sex'] == 2)/df.shape[0]) * 100)
 
 
-# In[13]:
-
-
-df['ageAtScan1_Years'].mean()
-
-
 # In[14]:
+
+
+print(df['ageAtScan1_Years'].mean())
+print(c['ageAtScan1'].mean())
+print(np.sum(c['ageAtScan1'] < c['ageAtScan1'].mean()))
+print(c.shape[0]-np.sum(c['ageAtScan1'] <= c['ageAtScan1'].mean()))
+
+
+# In[15]:
 
 
 df['ageAtScan1_Years'].std()
@@ -126,7 +158,7 @@ df['ageAtScan1_Years'].std()
 
 # ### Sex
 
-# In[15]:
+# In[16]:
 
 
 stats = pd.DataFrame(index = phenos, columns = ['test_stat', 'pval'])
@@ -145,12 +177,12 @@ stats.loc[:,'sig'] = stats.loc[:,'pval_corr'] < 0.05
 stats
 
 
-# In[16]:
+# In[17]:
 
 
 f, ax = plt.subplots(1,len(phenos))
-f.set_figwidth(len(phenos)*5)
-f.set_figheight(5)
+f.set_figwidth(len(phenos)*2.5)
+f.set_figheight(2.5)
 
 # sex: 1=male, 2=female
 for i, pheno in enumerate(phenos):
@@ -174,7 +206,7 @@ f.savefig(outfile_prefix+'symptoms_distributions_sex.png', dpi = 300, bbox_inche
 
 # ### Age
 
-# In[17]:
+# In[18]:
 
 
 stats = pd.DataFrame(index = phenos, columns = ['r', 'pval'])
@@ -193,17 +225,18 @@ stats.loc[:,'sig'] = stats.loc[:,'pval_corr'] < 0.05
 stats
 
 
-# In[18]:
+# In[19]:
 
 
 f, ax = plt.subplots(1,len(phenos))
-f.set_figwidth(len(phenos)*5)
-f.set_figheight(5)
+f.set_figwidth(len(phenos)*2.5)
+f.set_figheight(2.5)
 
 x = df['ageAtScan1_Years']
 for i, pheno in enumerate(phenos):
     y = df[pheno]
-    sns.regplot(x, y, ax=ax[i])
+    sns.regplot(x, y, ax=ax[i], scatter=False)
+    ax[i].scatter(x, y, color='gray', s=5, alpha=0.5)
     
     if stats.loc[pheno,'sig']:
         ax[i].set_title('r:' + str(np.round(stats.loc[pheno,'r'],2)) + ', p-value: ' + str(np.round(stats.loc[pheno,'pval_corr'],4)), fontweight="bold")
@@ -213,9 +246,89 @@ for i, pheno in enumerate(phenos):
 f.savefig(outfile_prefix+'symptoms_correlations_age.png', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
 
 
+# ### DWI data quality
+
+# In[20]:
+
+
+# 'dti64MeanRelRMS', 'dti64Tsnr', 'dti64Outmax', 'dti64Outmean',
+
+
+# In[21]:
+
+
+f, ax = plt.subplots()
+f.set_figwidth(2)
+f.set_figheight(2)
+x = df['dti64MeanRelRMS']
+sns.distplot(x, ax = ax)
+ax.set_xlabel('In-scanner motion \n(mean relative framewise displacement)')
+ax.set_ylabel('Counts')
+ax.tick_params(pad = -2)
+
+textstr = 'median = {:.2f}\nmean = {:.2f}\nstd = {:.2f}'.format(x.median(), x.mean(), x.std())
+ax.text(0.975, 0.975, textstr, transform=ax.transAxes,
+        verticalalignment='top', horizontalalignment='right')
+
+f.savefig(outfile_prefix+'inscanner_motion.svg', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
+
+
+# In[22]:
+
+
+f, ax = plt.subplots()
+f.set_figwidth(2)
+f.set_figheight(2)
+x = df['dti64Tsnr']
+sns.distplot(x, ax = ax)
+ax.set_xlabel('Temporal signal to noise ratio')
+ax.set_ylabel('Counts')
+ax.tick_params(pad = -2)
+
+textstr = 'median = {:.2f}\nmean = {:.2f}\nstd = {:.2f}'.format(x.median(), x.mean(), x.std())
+ax.text(0.05, 0.975, textstr, transform=ax.transAxes,
+        verticalalignment='top', horizontalalignment='left')
+
+f.savefig(outfile_prefix+'dwi_tsnr.svg', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
+
+
+# In[23]:
+
+
+x = df['dti64MeanRelRMS']
+# x = df['dti64Tsnr']
+
+stats = pd.DataFrame(index = df_node.columns, columns = ['r','p'])
+
+for col in df_node.columns:
+    r = sp.stats.spearmanr(x, df_node.loc[:,col])
+    stats.loc[col,'r'] = r[0]
+    stats.loc[col,'p'] = r[1]
+
+f, ax = plt.subplots(1,len(metrics))
+f.set_figwidth(len(metrics)*1.5)
+f.set_figheight(1.5)
+
+for i, metric in enumerate(metrics):
+    sns.distplot(stats.filter(regex = metric, axis = 0)['r'], ax = ax[i])
+    
+    ax[i].set_title(metrics_label[i])
+    if i == 2: ax[i].set_xlabel('QC-SC (Spearman\'s rho)')
+    else: ax[i].set_xlabel('')
+    if i == 0: ax[i].set_ylabel('Counts')
+    ax[i].tick_params(pad = -2)
+    
+    qc_sc = np.sum(stats.filter(regex = metric, axis = 0)['p']<.05)/num_parcels*100
+    textstr = '{:.0f}%'.format(qc_sc)
+    ax[i].text(0.975, 0.975, textstr, transform=ax[i].transAxes,
+            verticalalignment='top', horizontalalignment='right')
+    
+f.savefig(outfile_prefix+'qc_sc.svg', dpi = 300, bbox_inches = 'tight', pad_inches = 0)
+
+
 # ### Diagnostic table
 
-# In[19]:
+# In[24]:
 
 
 # to_screen = ['goassessSmryPsy', 'goassessSmryMood', 'goassessSmryEat', 'goassessSmryAnx', 'goassessSmryBeh']
@@ -224,14 +337,14 @@ f.savefig(outfile_prefix+'symptoms_correlations_age.png', dpi = 300, bbox_inches
 # print(counts/df.shape[0]*100)
 
 
-# In[20]:
+# In[25]:
 
 
 df['goassessDxpmr4_bin'] = df.loc[:,'goassessDxpmr4'] == '4PS'
 df['goassessDxpmr4_bin'] = df['goassessDxpmr4_bin'].astype(int)*4
 
 
-# In[21]:
+# In[26]:
 
 
 to_screen = ['goassessDxpmr4_bin','goassessSmryMan', 'goassessSmryDep', 'goassessSmryBul', 'goassessSmryAno', 'goassessSmrySoc',
@@ -242,20 +355,20 @@ print(counts)
 print(counts/df.shape[0]*100)
 
 
-# In[22]:
+# In[27]:
 
 
 to_keep = counts[counts >= 50].index
 list(to_keep)
 
 
-# In[23]:
+# In[28]:
 
 
 counts[counts >= 50]
 
 
-# In[24]:
+# In[29]:
 
 
 my_xticklabels = ['Psychosis spectrum (n=303)',
@@ -268,13 +381,7 @@ my_xticklabels = ['Psychosis spectrum (n=303)',
                  'Conduct disorder (n=85)']
 
 
-# In[25]:
-
-
-sns.set(style='white', context = 'paper', font_scale = 1)
-
-
-# In[26]:
+# In[30]:
 
 
 f, ax = plt.subplots(1,len(phenos))
@@ -294,7 +401,7 @@ for i, pheno in enumerate(phenos):
     ax[i].tick_params(pad = -2)
     ax[i].set_title(phenos_label[i])
     if i == 1:
-        ax[i].set_xlabel('Diagnostic group')
+        ax[i].set_xlabel('Psychopathology group')
     if i == 0:
         ax[i].set_ylabel('Factor score (z)')
     
