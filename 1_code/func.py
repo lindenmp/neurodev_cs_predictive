@@ -51,12 +51,30 @@ def set_proj_env(parc_str = 'schaefer', parc_scale = 200, edge_weight = 'streaml
 
     # Parcellation specifications
     # Names of parcels
-    if parc_str == 'schaefer': parcel_names = np.genfromtxt(os.path.join(projdir, 'figs_support/labels/schaefer' + str(parc_scale) + 'NodeNames.txt'), dtype='str')
+    if parc_str == 'schaefer':
+        parcel_names = np.genfromtxt(os.path.join(projdir, 'figs_support/labels/schaefer' + str(parc_scale) + 'NodeNames.txt'), dtype='str')
+    elif parc_str == 'lausanne':
+        parcel_names = np.genfromtxt(os.path.join(projdir, 'figs_support/labels/lausanne_' + str(parc_scale) + '.txt'), dtype='str')
+    else:
+        parcel_names = np.genfromtxt(os.path.join(projdir, 'figs_support/labels/glasser' + str(parc_scale) + 'NodeNames.txt'), dtype='str')
+
     # vector describing whether rois belong to cortex (1) or subcortex (0)
-    if parc_str == 'schaefer': parcel_loc = np.loadtxt(os.path.join(projdir, 'figs_support/labels/schaefer' + str(parc_scale) + 'NodeNames_loc.txt'), dtype='int')
+    if parc_str == 'schaefer':
+        parcel_loc = np.loadtxt(os.path.join(projdir, 'figs_support/labels/schaefer' + str(parc_scale) + 'NodeNames_loc.txt'), dtype='int')
+    elif parc_str == 'lausanne':
+        parcel_loc = np.loadtxt(os.path.join(projdir, 'figs_support/labels/lausanne_' + str(parc_scale) + '_loc.txt'), dtype='int')
+    else:
+        parcel_loc = []
 
     drop_parcels = []
-    num_parcels = parcel_names.shape[0]
+
+    if len(parcel_names)>0:
+        num_parcels = parcel_names.shape[0]
+    else:
+        if parc_str == 'glasser':
+            num_parcels = 360
+        else:
+            num_parcels = []
 
     if parc_str == 'schaefer':
         scdir = os.path.join(derivsdir, 'processedData/diffusion/deterministic_20171118'); os.environ['SCDIR'] = scdir
@@ -69,6 +87,28 @@ def set_proj_env(parc_str = 'schaefer', parc_scale = 200, edge_weight = 'streaml
             rsts_name_tmp = 'bblid/*xscanid/net/Schaefer' + str(parc_scale) + 'PNC/bblid_*xscanid_Schaefer' + str(parc_scale) + 'PNC_ts.1D'; os.environ['RSTS_NAME_TMP'] = rsts_name_tmp
         elif parc_scale == 400:
             rsts_name_tmp = 'bblid/*xscanid/net/SchaeferPNC/bblid_*xscanid_SchaeferPNC_ts.1D'; os.environ['RSTS_NAME_TMP'] = rsts_name_tmp
+    elif parc_str == 'glasser':
+        scdir = os.path.join(derivsdir, 'processedData/diffusion/deterministic_dec2016', edge_weight, 'GlasserPNC'); os.environ['SCDIR'] = scdir
+        sc_name_tmp = 'scanid_' + edge_weight + '_GlasserPNC.mat'; os.environ['SC_NAME_TMP'] = sc_name_tmp
+        
+        if edge_weight == 'streamlineCount':
+            os.environ['CONN_STR'] = 'connectivity'
+        elif edge_weight == 'volNormStreamline':
+            os.environ['CONN_STR'] = 'volNorm_connectivity'
+
+        rstsdir = os.path.join(derivsdir, 'processedData/restbold/restbold_201607151621'); os.environ['RSTSDIR'] = rstsdir
+        rsts_name_tmp = 'bblid/*xscanid/net/GlasserPNC/bblid_*xscanid_GlasserPNC_ts.1D'; os.environ['RSTS_NAME_TMP'] = rsts_name_tmp
+    elif parc_str == 'lausanne':
+        scdir = os.path.join(derivsdir, 'processedData/diffusion/deterministic_dec2016', edge_weight, 'LausanneScale' + str(parc_scale)); os.environ['SCDIR'] = scdir
+        sc_name_tmp = 'scanid_' + edge_weight + '_LausanneScale' + str(parc_scale) + '.mat'; os.environ['SC_NAME_TMP'] = sc_name_tmp
+        
+        if edge_weight == 'streamlineCount':
+            os.environ['CONN_STR'] = 'connectivity'
+        elif edge_weight == 'volNormStreamline':
+            os.environ['CONN_STR'] = 'volNorm_connectivity'
+
+        rstsdir = os.path.join(derivsdir, 'processedData/restbold/restbold_201607151621'); os.environ['RSTSDIR'] = rstsdir
+        rsts_name_tmp = 'bblid/*xscanid/net/Lausanne' + str(parc_scale) + '/bblid_*xscanid_Lausanne' + str(parc_scale) + '_ts.1D'; os.environ['RSTS_NAME_TMP'] = rsts_name_tmp
 
     return parcel_names, parcel_loc, drop_parcels, num_parcels
 
