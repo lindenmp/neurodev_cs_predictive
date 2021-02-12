@@ -34,7 +34,7 @@ from networkx import from_numpy_matrix, degree_centrality, closeness_centrality,
 
 
 sys.path.append('/Users/lindenmp/Google-Drive-Penn/work/research_projects/neurodev_cs_predictive/1_code/')
-from func import set_proj_env, rank_int, node_strength, ave_control
+from func import set_proj_env, rank_int, node_strength, ave_control, modal_control
 
 
 # In[4]:
@@ -59,7 +59,13 @@ else:
 
 
 # output file prefix
-outfile_prefix = parc_str+'_'+str(parc_scale)+'_'+edge_weight+'_'
+run_hemi = ''
+if run_hemi == 'ipsi':
+    outfile_prefix = parc_str+'_'+str(parc_scale)+'_'+edge_weight+'_ipsi_'
+elif run_hemi == 'contra':
+    outfile_prefix = parc_str+'_'+str(parc_scale)+'_'+edge_weight+'_contra_'
+else:
+    outfile_prefix = parc_str+'_'+str(parc_scale)+'_'+edge_weight+'_'
 outfile_prefix
 
 
@@ -123,27 +129,36 @@ if parc_scale == 200:
 # In[13]:
 
 
+# if run_ipsi == True and parc_str == 'schaefer' and parc_scale == 200:
+#     num_parcels = int(num_parcels/2)
+#     print(num_parcels)
+
+
+# In[14]:
+
+
 # output dataframe
 str_labels = ['str_' + str(i) for i in range(num_parcels)]
 ac_labels = ['ac_' + str(i) for i in range(num_parcels)]
+mc_labels = ['mc_' + str(i) for i in range(num_parcels)]
 bc_labels = ['bc_' + str(i) for i in range(num_parcels)]
 cc_labels = ['cc_' + str(i) for i in range(num_parcels)]
 sgc_labels = ['sgc_' + str(i) for i in range(num_parcels)]
 
-df_node = pd.DataFrame(index = df.index, columns = str_labels + ac_labels + bc_labels + cc_labels + sgc_labels)
+df_node = pd.DataFrame(index = df.index, columns = str_labels + ac_labels + mc_labels + bc_labels + cc_labels + sgc_labels)
 print(df_node.shape)
 
 
 # ## Load in structural connectivity matrices
 
-# In[14]:
+# In[15]:
 
 
 # subject filter
 subj_filt = np.zeros((df.shape[0],)).astype(bool)
 
 
-# In[15]:
+# In[16]:
 
 
 print(os.environ['CONN_STR'])
@@ -160,6 +175,15 @@ for (i, (index, row)) in enumerate(df.iterrows()):
         if parc_str == 'lausanne': # drop brainstem but retain subcortex.
             a = a[parcel_loc != 2,:]
             a = a[:,parcel_loc != 2]
+        if run_hemi == 'intra' and parc_str == 'schaefer' and parc_scale == 200: # reting ipsilateral hemisphere (optional)
+#             a = a[:num_parcels,:num_parcels]
+            my_idx = int(num_parcels/2)
+            a[:my_idx,my_idx:] = 0
+            a[my_idx:,:my_idx] = 0
+        if run_hemi == 'contra' and parc_str == 'schaefer' and parc_scale == 200: # reting ipsilateral hemisphere (optional)
+            my_idx = int(num_parcels/2)
+            a[:my_idx,:my_idx] = 0
+            a[my_idx:,my_idx:] = 0
         A[:,:,i] = a
     elif len(full_path) == 0:
         print(file_name + ': NOT FOUND')
@@ -167,13 +191,13 @@ for (i, (index, row)) in enumerate(df.iterrows()):
         A[:,:,i] = np.full((num_parcels, num_parcels), np.nan)
 
 
-# In[16]:
+# In[17]:
 
 
 np.sum(subj_filt)
 
 
-# In[17]:
+# In[18]:
 
 
 if any(subj_filt):
@@ -183,16 +207,22 @@ if any(subj_filt):
 print(df_node.shape)
 
 
+# In[19]:
+
+
+sns.heatmap(np.nanmean(A,2))
+
+
 # ### Check if any subjects have disconnected nodes in A matrix
 
-# In[18]:
+# In[20]:
 
 
 # subject filter
 subj_filt = np.zeros((df.shape[0],)).astype(bool)
 
 
-# In[19]:
+# In[21]:
 
 
 for i in range(A.shape[2]):
@@ -200,13 +230,13 @@ for i in range(A.shape[2]):
         subj_filt[i] = True
 
 
-# In[20]:
+# In[22]:
 
 
 np.sum(subj_filt)
 
 
-# In[21]:
+# In[23]:
 
 
 if any(subj_filt):
@@ -216,13 +246,13 @@ if any(subj_filt):
 print(df_node.shape)
 
 
-# In[22]:
+# In[24]:
 
 
 np.sum(df['averageManualRating'] == 2)
 
 
-# In[23]:
+# In[25]:
 
 
 np.sum(df['dti64QAManualScore'] == 2)
@@ -230,7 +260,7 @@ np.sum(df['dti64QAManualScore'] == 2)
 
 # ### Get streamline count and network density
 
-# In[24]:
+# In[26]:
 
 
 A_c = np.zeros((A.shape[2],))
@@ -244,12 +274,13 @@ df.loc[:,'network_density'] = A_d
 
 # ### Compute node metrics
 
-# In[25]:
+# In[27]:
 
 
 # fc stored as 3d matrix, subjects of 3rd dim
 S = np.zeros((df.shape[0], num_parcels))
 AC = np.zeros((df.shape[0], num_parcels))
+MC = np.zeros((df.shape[0], num_parcels))
 BC = np.zeros((df.shape[0], num_parcels))
 CC = np.zeros((df.shape[0], num_parcels))
 SGC = np.zeros((df.shape[0], num_parcels))
@@ -258,6 +289,7 @@ SGC = np.zeros((df.shape[0], num_parcels))
 for i in tqdm(np.arange(df.shape[0])):
     S[i,:] = node_strength(A[:,:,i])
     AC[i,:] = ave_control(A[:,:,i])
+    MC[i,:] = modal_control(A[:,:,i])
     G = from_numpy_matrix(A[:,:,i])
     BC[i,:] = np.array(list(betweenness_centrality(G, normalized=False).values()))
     CC[i,:] = np.array(list(closeness_centrality(G).values()))
@@ -265,6 +297,7 @@ for i in tqdm(np.arange(df.shape[0])):
     
 df_node.loc[:,str_labels] = S
 df_node.loc[:,ac_labels] = AC
+df_node.loc[:,mc_labels] = MC
 df_node.loc[:,bc_labels] = BC
 df_node.loc[:,cc_labels] = CC
 df_node.loc[:,sgc_labels] = SGC
@@ -272,14 +305,14 @@ df_node.loc[:,sgc_labels] = SGC
 
 # ## Recalculate average control at different C params
 
-# In[26]:
+# In[28]:
 
 
 c_params = np.array([10, 100, 1000, 10000])
 c_params
 
 
-# In[27]:
+# In[29]:
 
 
 # output dataframe
@@ -301,27 +334,14 @@ for c in c_params:
 
 # ## Scale average controllability to test for differences in initial conditions
 
-# In[28]:
-
-
-df_node_ac_i2 = df_node.loc[:,ac_labels] * (2**2)
-df_node_ac_i2.head()
-
-
-# In[29]:
-
-
-df_node_ac_overc_i2 = df_node_ac_overc * (2**2)
-df_node_ac_overc_i2.head()
-
-
-# # Save out raw data
-
 # In[30]:
 
 
-df_node.head()
+df_node_ac_i2 = df_node.loc[:,ac_labels] * (2**2)
+df_node_ac_overc_i2 = df_node_ac_overc * (2**2)
 
+
+# # Save out raw data
 
 # In[31]:
 
@@ -329,6 +349,7 @@ df_node.head()
 print(df_node.isna().any().any())
 print(df_node_ac_overc.isna().any().any())
 print(df_node_ac_i2.isna().any().any())
+print(df_node_ac_overc_i2.isna().any().any())
 
 
 # In[32]:
