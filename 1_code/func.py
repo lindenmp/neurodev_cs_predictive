@@ -157,16 +157,14 @@ def my_get_cmap(which_type = 'qual1', num_classes = 8):
                             [41,38,99], # DefaultC
                             [53,75,158] # TempPar
                             ])
-    elif which_type == 'yeo17_downsampled':
-        cmap_base = np.array([[97,38,107], # VisCent
-                            [79,130,165], # SomMotA
-                            [75,148,72], # DorsAttnA
-                            [149,77,158], # SalVentAttnA
-                            [75,87,61], # LimbicA
-                            [210,135,47], # ContA
-                            [218,221,50], # DefaultA
-                            [53,75,158] # TempPar
-                            ])
+    elif which_type == 'yeo7':
+        cmap_base = np.array([[162,81,172], # visual
+                            [120,154,192], # somatomotor
+                            [63,153,50], # dorsalAttention
+                            [223,101,255], # salienceVentralAttention
+                            [247,253,201], # limbic
+                            [241,185,68], # frontoparietalControl
+                            [217,112,123]]) # default
 
     if cmap_base.shape[0] > num_classes: cmap = cmap_base[0:num_classes]
     else: cmap = cmap_base
@@ -393,7 +391,8 @@ def cross_val_score_nuis(X, y, c, my_cv, reg, my_scorer):
         c_test = pd.DataFrame(data = c_test, index = c.iloc[te,:].index, columns = c.iloc[te,:].columns)
 
         # regress nuisance (X)
-        nuis_reg = LinearRegression(); nuis_reg.fit(c_train, X_train)
+        # nuis_reg = LinearRegression(); nuis_reg.fit(c_train, X_train)
+        nuis_reg = KernelRidge(kernel='rbf'); nuis_reg.fit(c_train, X_train)
         X_pred = nuis_reg.predict(c_train); X_train = X_train - X_pred
         X_pred = nuis_reg.predict(c_test); X_test = X_test - X_pred
 
@@ -427,7 +426,10 @@ def assemble_df(numpy_array, algs, metrics, phenos):
     return df
 
 
-def get_exact_p(x,y):
-    pval = 2*np.min([np.mean(x-y>=0), np.mean(x-y<=0)])
-    
+def get_exact_p(x,y, tailed=2):
+    if tailed == 2:
+        pval = 2*np.min([np.mean(x-y>=0), np.mean(x-y<=0)])
+    else:
+        pval = np.min([np.mean(x-y>=0), np.mean(x-y<=0)])
+
     return pval
