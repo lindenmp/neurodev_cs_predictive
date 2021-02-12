@@ -206,6 +206,42 @@ def ave_control(A, c = 1):
     return values
 
 
+def modal_control(A, c = 1):
+    # FUNCTION:
+    #         Returns values of MODAL CONTROLLABILITY for each node in a
+    #         network, given the adjacency matrix for that network. Modal
+    #         controllability indicates the ability of that node to steer the
+    #         system into difficult-to-reach states, given input at that node.
+    #
+    # INPUT:
+    #         A is the structural (NOT FUNCTIONAL) network adjacency matrix, 
+    #     such that the simple linear model of dynamics outlined in the 
+    #     reference is an accurate estimate of brain state fluctuations. 
+    #     Assumes all values in the matrix are positive, and that the 
+    #     matrix is symmetric.
+    #
+    # OUTPUT:
+    #         Vector of modal controllability values for each node
+    #
+    # Bassett Lab, University of Pennsylvania, 2016. 
+    # Reference: Gu, Pasqualetti, Cieslak, Telesford, Yu, Kahn, Medaglia,
+    #            Vettel, Miller, Grafton & Bassett, Nature Communications
+    #            6:8414, 2015.
+    
+    u, s, vt = svd(A) # singluar value decomposition
+    A = A/(c + s[0]) # Matrix normalization
+    T, U = schur(A,'real') # Schur stability
+    eigVals = np.diag(T)
+    N = A.shape[0]
+    phi = np.zeros(N,dtype = float)
+    for i in range(N):
+        Al = U[i,] * U[i,]
+        Ar = (1.0 - np.power(eigVals,2)).transpose()
+        phi[i] = np.matmul(Al, Ar)
+    
+    return phi
+
+
 def get_fdr_p(p_vals, alpha = 0.05):
     out = multitest.multipletests(p_vals, alpha = alpha, method = 'fdr_bh')
     p_fdr = out[1] 
